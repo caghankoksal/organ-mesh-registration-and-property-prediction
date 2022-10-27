@@ -1,7 +1,29 @@
-project_name
+Organ Mesh Registration and Propert Prediction
 ==============================
 
 A short description of the project.
+
+
+# Setup
+
+To make it easy for you to get started with our model, here's a list of recommended next steps:
+
+- [ ] Clone this repository into a local folder.
+```
+
+cd local/path
+git clone https://gitlab.lrz.de/caghankoksal/organ-mesh-registration-and-property-prediction
+```
+- [ ] Setup the python virtual environement using `conda`.
+
+```
+module load python/anaconda3
+conda create -n mesh_gnn_organ python=3.9
+conda activate mesh_gnn_organ
+conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
+
+```
+- [ ] Check the playground notebooks for usage examples
 
 Project Organization
 ------------
