@@ -7,6 +7,7 @@ from src.data.organs_dataset import OrganMeshDataset
 from torch_geometric.data import DataLoader
 from tqdm import tqdm
 from time import sleep
+import mlflow
 
 def train(net, train_data, optimizer, loss_fn, device):
     """Train network on training dataset."""
@@ -24,6 +25,19 @@ def train(net, train_data, optimizer, loss_fn, device):
         optimizer.step()
     return cumulative_loss / len(train_data)
 
+def calculate_val_loss(net, val_data, loss_fn, device):
+    net.eval()
+    cumulative_loss = 0.0
+    for data in val_data:
+        data = data.to(device)
+        out = net(data)
+        #print('Out shape ', out.shape)
+        #print('data y shape', data.y.shape)
+        loss = loss_fn(out, data.y.float())
+        cumulative_loss += loss.item()
+    return cumulative_loss / len(val_data)
+
+
 
 def accuracy(predictions, gt_seg_labels):
     """Compute accuracy of predicted segmentation labels.
@@ -39,7 +53,13 @@ def accuracy(predictions, gt_seg_labels):
     float
         Accuracy of predicted segmentation labels.    
     """
-    predicted_seg_labels = predictions.argmax(dim=-1, keepdim=True)
+    #predicted_seg_labels = predictions.argmax(dim=-1, keepdim=True)
+    predicted_seg_labels = torch.nn.Sigmoid()(predictions)
+    #predicted_seg_labels[predicted_seg_labels>0.5] = 1
+    #predicted_seg_labels[predicted_seg_labels<0.5] = 0
+    predicted_seg_labels = torch.round(predicted_seg_labels)
+    #predicted_seg_labels = predictions.argmax(dim=-1, keepdim=True)
+    #print('predicted_seg_labels : ',predicted_seg_labels.shape)
     if predicted_seg_labels.shape != gt_seg_labels.shape:
         raise ValueError("Expected Shapes to be equivalent")
     correct_assignments = (predicted_seg_labels == gt_seg_labels).sum()
@@ -61,7 +81,7 @@ def evaluate_performance(dataset, net, device):
 
     Returns
     -------
-    float:
+    float:x
         Mean accuracy of the network's prediction on
         the provided dataset.
     """
@@ -86,9 +106,9 @@ if __name__ == '__main__':
 
     model_params = dict(
     in_features=3,
-    encoder_features=16,
+    encoder_features=128,
     conv_channels=[32, 64, 128, 64],
-    encoder_channels=[16],
+    encoder_channels=[128],
     decoder_channels=[32],
     num_classes=1,
     num_heads=12,
@@ -105,15 +125,15 @@ if __name__ == '__main__':
     split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
 
 
-    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, num_samples = 1000, mode='train', split_path=split_path )
-    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples = 100, mode='val', split_path=split_path )
-    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples =100, mode='test', split_path=split_path )
+    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, num_samples=3000, mode='train', split_path=split_path )
+    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=500, mode='val', split_path=split_path )
+    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=500, mode='test', split_path=split_path )
 
     train_loader = DataLoader(train_dataset,  shuffle=True)
     test_loader = DataLoader(test_dataset, shuffle=False)
 
     lr = 0.001
-    num_epochs = 50
+    num_epochs = 300
     best_test_acc = 0.0
 
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
@@ -122,10 +142,17 @@ if __name__ == '__main__':
     with tqdm(range(num_epochs), unit="Epoch") as tepochs:
         for epoch in tepochs:
             train_loss = train(net, train_loader, optimizer, loss_fn, device)
+            val_loss = calculate_val_loss(net, test_loader, loss_fn, device)
+            mlflow.log_metric('train_loss',train_loss)
+            mlflow.log_metric('val_loss',val_loss)
             train_acc, test_acc = test(net, train_loader, test_loader, device)
+            mlflow.log_metric('train_acc',train_acc)
+            mlflow.log_metric('test_acc',test_acc)
+
             
             tepochs.set_postfix(
                 train_loss=train_loss,
+                val_loss = val_loss,
                 train_accuracy=100 * train_acc,
                 test_accuracy=100 * test_acc,
             )
@@ -133,7 +160,7 @@ if __name__ == '__main__':
 
             if test_acc > best_test_acc:
                 best_test_acc = test_acc
-                #torch.save(net.state_dict(), "/content/checkpoint_best_colab")
+                torch.save(net.state_dict(), f"checkpoint_best_testacc_{test_acc}")
 
 
     
