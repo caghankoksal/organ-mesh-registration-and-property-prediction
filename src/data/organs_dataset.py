@@ -57,8 +57,7 @@ class OrganMeshDataset(Dataset):
         patient_features = self.basic_features[self.basic_features['eid'] == int(selected_patient)]
         #print(patient_features['sex'])
         gender_patient = patient_features['sex'].item()
-        print('Gender patient', gender_patient)
         #Label of the data is currently gender
-        data.y = gender_patient
+        data.y = int(gender_patient)
         return data
     
