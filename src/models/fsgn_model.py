@@ -15,7 +15,7 @@ from torch_geometric.nn import MessagePassing
 from torch_geometric.utils import add_self_loops, remove_self_loops
 from torch_geometric.transforms import BaseTransform, Compose, FaceToEdge
 from torch_geometric.data import Data, InMemoryDataset, extract_zip, DataLoader
-
+from torch_geometric.nn import global_mean_pool
 
 def pairwise(iterable):
     """Iterate over all pairs of consecutive items in a list.
@@ -59,6 +59,7 @@ def get_mlp_layers(channels: list, activation, output_activation=nn.Identity):
         layers += [intermediate_layer, activation()]
 
     layers += [nn.Linear(*final_layer_definition), output_activation()]
+    #print('Output activation ',output_activation)
     return nn.Sequential(*layers)
 
 
@@ -260,12 +261,27 @@ class MeshSeg(torch.nn.Module):
         num_classes,
         num_heads,
         apply_batch_norm=True,
+        use_input_encoder=True,
     ):
+
+        """   
+        in_features=3,
+        encoder_features=128,
+        conv_channels=[32, 64, 128, 64],
+        encoder_channels=[128],
+        decoder_channels=[32],
+        num_classes=1,
+        num_heads=12,
+        apply_batch_norm=True
+        """
         super().__init__()
-        self.input_encoder = get_mlp_layers(
-            channels=[in_features] + encoder_channels,
-            activation=nn.ReLU,
-        )
+
+        self.use_input_encoder = use_input_encoder
+        if self.use_input_encoder :
+            self.input_encoder = get_mlp_layers(
+                channels=[in_features] + encoder_channels,
+                activation=nn.ELU,
+            )
         self.gnn = GraphFeatureEncoder(
             in_features=encoder_features,
             conv_channels=conv_channels,
@@ -276,14 +292,17 @@ class MeshSeg(torch.nn.Module):
 
         self.final_projection = get_mlp_layers(
             [final_conv_channel] + decoder_channels + [num_classes],
-            activation=nn.ReLU,
+            activation=nn.ELU,
         )
 
     def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-        x = self.input_encoder(x)
+        x, edge_index, batch = data.x, data.edge_index, data.batch
+        #print('Input Encoder x shape',x.shape)
+        if self.use_input_encoder:
+            x = self.input_encoder(x)
         x = self.gnn(x, edge_index)
-        x =  self.final_projection(x)
-
         # Pool
-        return torch.mean(x,dim=0)#.unsqueeze(0)
+        x = global_mean_pool(x,batch)
+        x = F.dropout(x, p=0.5, training=self.training)
+        x =  self.final_projection(x)
+        return x
