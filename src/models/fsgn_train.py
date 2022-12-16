@@ -8,6 +8,8 @@ from torch_geometric.data import DataLoader
 from tqdm import tqdm
 from time import sleep
 import mlflow
+from baseline_model import GCN
+import argparse
 
 def train(net, train_data, optimizer, loss_fn, device):
     """Train network on training dataset."""
@@ -17,9 +19,9 @@ def train(net, train_data, optimizer, loss_fn, device):
         data = data.to(device)
         optimizer.zero_grad()
         out = net(data)
-        #print('Out shape ', out.shape)
+        #print('Out shape ', out.shape, out)
         #print('data y shape', data.y.shape)
-        loss = loss_fn(out, data.y.float())
+        loss = loss_fn(out.squeeze(1), data.y.float())
         loss.backward()
         cumulative_loss += loss.item()
         optimizer.step()
@@ -33,8 +35,10 @@ def calculate_val_loss(net, val_data, loss_fn, device):
         out = net(data)
         #print('Out shape ', out.shape)
         #print('data y shape', data.y.shape)
-        loss = loss_fn(out, data.y.float())
+        loss = loss_fn(out.squeeze(1), data.y.float())
         cumulative_loss += loss.item()
+
+        #print(f'Val loss is being calculated  val loss: {cumulative_loss}, len : {len(val_data)}')
     return cumulative_loss / len(val_data)
 
 
@@ -54,6 +58,7 @@ def accuracy(predictions, gt_seg_labels):
         Accuracy of predicted segmentation labels.    
     """
     #predicted_seg_labels = predictions.argmax(dim=-1, keepdim=True)
+   # print('Predictions', predictions.shape)
     predicted_seg_labels = torch.nn.Sigmoid()(predictions)
     #predicted_seg_labels[predicted_seg_labels>0.5] = 1
     #predicted_seg_labels[predicted_seg_labels<0.5] = 0
@@ -89,7 +94,7 @@ def evaluate_performance(dataset, net, device):
     for data in dataset:
         data = data.to(device)
         predictions = net(data)
-        prediction_accuracies.append(accuracy(predictions, data.y))
+        prediction_accuracies.append(accuracy(predictions.squeeze(1), data.y))
     return sum(prediction_accuracies) / len(prediction_accuracies)
 
 @torch.no_grad()
@@ -102,20 +107,70 @@ def test(net, train_data, test_data, device):
 
 
 
-if __name__ == '__main__':
+def build_args():
+    parser = argparse.ArgumentParser(description='GNN for Organ Meshes')
+    parser.add_argument("--model", type=str, default="fsgnet")
+    parser.add_argument("--device", type=int, default=5)
+    parser.add_argument("--max_epoch", type=int, default=50,
+                        help="number of training epochs")
+    parser.add_argument("--enc_feats", type=int, default=128,
+                        help="Encoder features")        
+    parser.add_argument("--num_heads", type=int, default=12,
+                        help="number of hidden attention heads")
 
-    model_params = dict(
-    in_features=3,
-    encoder_features=128,
-    conv_channels=[32, 64, 128, 64],
-    encoder_channels=[128],
-    decoder_channels=[32],
-    num_classes=1,
-    num_heads=12,
-    apply_batch_norm=True,
-)   
-    device = torch.device('cuda:6')
-    net = MeshSeg(**model_params).to(device)
+    parser.add_argument("--hidden_dim", type=int, default=512,
+                        help="Hidden dim of baseline")
+
+    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--layer", type=str, default="gcn")
+    args = parser.parse_args()
+    return args
+
+if __name__ == '__main__':
+    args = build_args()
+    print('Args : ',args)
+    device = args.device if args.device >= 0 else "cpu"
+    model = args.model
+    max_epoch = args.max_epoch
+    num_heads = args.num_heads
+    enc_feats = args.enc_feats
+    hidden_dim = args.hidden_dim
+    batch_size = args.batch_size
+    layer = args.layer
+    
+
+    if model=='fsgnet':
+
+        model_params = dict(
+        use_input_encoder = True,
+        in_features=3,
+        encoder_features=enc_feats,
+        conv_channels=[64, 128, 128, 128],
+        encoder_channels=[enc_feats],
+        decoder_channels=[64],
+        num_classes=1,
+        num_heads=num_heads,
+        apply_batch_norm=True,  
+    )   
+
+        net = MeshSeg(**model_params).to(device)
+
+    elif model=='baseline':
+        print('Baseline Model is initialized')
+        model_params = dict(
+        num_classes=1,
+        in_features=3,
+        hidden_dim=args.hidden_dim,
+        layer = args.layer
+        )
+        net = GCN(model_params['in_features'], model_params['num_classes'], model_params['hidden_dim'],
+                 layer=model_params['layer']).to(device)
+    mlflow.start_run()
+    for k,v in model_params.items():
+        mlflow.log_param(k, v)
+
+    
+
 
     root = '/vol/chameleon/projects/mesh_gnn/organ_meshes'
 
@@ -123,18 +178,20 @@ if __name__ == '__main__':
     basic_feat_path = '/vol/chameleon/projects/mesh_gnn/basic_features.csv'
     bridge_path = '/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv'
     split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
-
-
     train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, num_samples=3000, mode='train', split_path=split_path )
-    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=500, mode='val', split_path=split_path )
-    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=500, mode='test', split_path=split_path )
+    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=300, mode='val', split_path=split_path )
+    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=300, mode='test', split_path=split_path )
 
-    train_loader = DataLoader(train_dataset,  shuffle=True)
-    test_loader = DataLoader(test_dataset, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size,  shuffle=False)
 
-    lr = 0.001
-    num_epochs = 300
+    lr = 0.0001
+    num_epochs = 50
     best_test_acc = 0.0
+
+    mlflow.log_param("lr", lr)
+    mlflow.log_param("num_epochs", num_epochs) 
+
 
     optimizer = torch.optim.Adam(net.parameters(), lr=lr)
     loss_fn = torch.nn.BCEWithLogitsLoss()
@@ -160,8 +217,9 @@ if __name__ == '__main__':
 
             if test_acc > best_test_acc:
                 best_test_acc = test_acc
-                torch.save(net.state_dict(), f"checkpoint_best_testacc_{test_acc}")
+                torch.save(net.state_dict(), f"ckpts_enc_channels_{model_params['in_features']}_best_testacc_{test_acc:.2f}")
 
+    print('Best Test Accuracy is ',best_test_acc)
 
     
 
