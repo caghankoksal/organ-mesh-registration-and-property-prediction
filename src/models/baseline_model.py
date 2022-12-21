@@ -1,36 +1,82 @@
 import torch
-from torch.nn import Linear
+from torch import nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv,SAGEConv
+from torch_geometric.nn import GCNConv, SAGEConv, LayerNorm, Linear
 from torch_geometric.nn import global_mean_pool
+from fsgn_model import get_mlp_layers
+
+
+
+def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int, 
+                 gnn_layer, activation=nn.ReLU, normalization=None, dropout = None):
+    """Creates GNN layers"""
+    layers = nn.ModuleList()
+   
+    for i in range(n_layers):
+        # First GNN layer
+        if i == 0:
+            layer = gnn_layer(num_inp_features, hidden_channels)
+        else:
+            layer = gnn_layer(hidden_channels, hidden_channels)
+        
+        if normalization is not None:
+            norm_layer = normalization(hidden_channels)
+
+        layers += [layer, activation(), norm_layer ]
+
+    return nn.ModuleList(layers)
+
 
 
 class GCN(torch.nn.Module):
-    def __init__(self, num_node_features, num_classes, hidden_channels, num_layers=3, layer='gcn'):
+    def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
+                 use_input_encoder=True, input_encoder_dim=128, apply_batch_norm=True, apply_dropout_every=True):
         super(GCN, self).__init__()
         torch.manual_seed(12345)
-        if layer == 'gcn':
-            self.conv1 = GCNConv(num_node_features, hidden_channels)
-            self.conv2 = GCNConv(hidden_channels, hidden_channels)
-            self.conv3 = GCNConv(hidden_channels, hidden_channels)
-            
-        elif layer == 'sageconv':
-            self.conv1 = SAGEConv(num_node_features, hidden_channels)
-            self.conv2 = SAGEConv(hidden_channels, hidden_channels)
-            self.conv3 = SAGEConv(hidden_channels, hidden_channels)
-
         
+        self.use_input_encoder = use_input_encoder
+        self.apply_batch_norm = apply_batch_norm
+        self.apply_dropout_every = apply_dropout_every
+        if self.use_input_encoder :
+            self.input_encoder = get_mlp_layers(
+                channels=[in_features, input_encoder_dim],
+                activation=nn.ELU,
+            )
+            in_features = input_encoder_dim
+
+        if layer == 'gcn':
+            self.layers = get_gnn_layers(num_layers, hidden_channels, num_inp_features=in_features,
+                                        gnn_layer=GCNConv,activation=nn.ReLU,normalization=LayerNorm )
+        elif layer == 'sageconv':
+            self.layers = get_gnn_layers(num_layers, hidden_channels,in_features,
+                                        gnn_layer=SAGEConv,activation=nn.ReLU,normalization=LayerNorm )
+
+        #if apply_batch_norm:
+        #    self.batch_layers = nn.ModuleList(
+        #        [nn.BatchNorm1d(hidden_channels) for i in range(num_layers)]
+        #    )
+
+
         self.lin = Linear(hidden_channels, num_classes)
 
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
-        # 1. Obtain node embeddings 
-        x = self.conv1(x, edge_index)
-        x = x.relu()
-        x = self.conv2(x, edge_index)
-        x = x.relu()
-        x = self.conv3(x, edge_index)
+
+        if self.use_input_encoder:
+            x = self.input_encoder(x)
+
+        for i, layer in enumerate(self.layers):
+            # Each GCN consists 3 modules GCN -> Activation ->  Normalization 
+            # GCN send edge index
+            if i% 3 == 0:
+                x = layer(x, edge_index)
+            else:
+                x = layer(x)
+
+            if self.apply_dropout_every:
+                x = F.dropout(x, p=0.5, training=self.training)
+                
 
         # 2. Readout layer
         x = global_mean_pool(x, batch)  # [batch_size, hidden_channels]

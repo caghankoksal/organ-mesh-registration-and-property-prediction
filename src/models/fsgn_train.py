@@ -118,11 +118,18 @@ def build_args():
     parser.add_argument("--num_heads", type=int, default=12,
                         help="number of hidden attention heads")
 
-    parser.add_argument("--hidden_dim", type=int, default=512,
+    parser.add_argument("--hidden_channels", type=int, default=512,
                         help="Hidden dim of baseline")
 
+    parser.add_argument("--num_train_samples", type=int, default=3000,
+                        help="Number of training samples")  
+    parser.add_argument("--num_test_samples", type=int, default=300,
+                            help="Number of training samples")                        
+
     parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--layer", type=str, default="gcn")
+    parser.add_argument("--use_input_encoder", type=bool, default=True)
     args = parser.parse_args()
     return args
 
@@ -134,20 +141,24 @@ if __name__ == '__main__':
     max_epoch = args.max_epoch
     num_heads = args.num_heads
     enc_feats = args.enc_feats
-    hidden_dim = args.hidden_dim
+    hidden_channels = args.hidden_channels
     batch_size = args.batch_size
     layer = args.layer
+    num_train_samples = args.num_train_samples
+    num_test_samples = args.num_test_samples
+    use_input_encoder = args.use_input_encoder
+    num_layers = args.num_layers 
     
 
     if model=='fsgnet':
 
         model_params = dict(
-        use_input_encoder = True,
+        use_input_encoder = use_input_encoder,
         in_features=3,
         encoder_features=enc_feats,
-        conv_channels=[64, 128, 128, 128],
+        conv_channels=[256, 256, 256, 256],
         encoder_channels=[enc_feats],
-        decoder_channels=[64],
+        decoder_channels=[256],
         num_classes=1,
         num_heads=num_heads,
         apply_batch_norm=True,  
@@ -159,12 +170,14 @@ if __name__ == '__main__':
         print('Baseline Model is initialized')
         model_params = dict(
         num_classes=1,
-        in_features=3,
-        hidden_dim=args.hidden_dim,
-        layer = args.layer
+        in_features=3, 
+        hidden_channels=args.hidden_channels,
+        layer = args.layer,
+        use_input_encoder = args.use_input_encoder,
+        input_encoder_dim = args.enc_feats,
+        num_layers = args.num_layers,
         )
-        net = GCN(model_params['in_features'], model_params['num_classes'], model_params['hidden_dim'],
-                 layer=model_params['layer']).to(device)
+        net = GCN(**model_params).to(device)
     mlflow.start_run()
     for k,v in model_params.items():
         mlflow.log_param(k, v)
@@ -178,9 +191,9 @@ if __name__ == '__main__':
     basic_feat_path = '/vol/chameleon/projects/mesh_gnn/basic_features.csv'
     bridge_path = '/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv'
     split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
-    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, num_samples=3000, mode='train', split_path=split_path )
-    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=300, mode='val', split_path=split_path )
-    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=300, mode='test', split_path=split_path )
+    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, num_samples=num_train_samples, mode='train', split_path=split_path )
+    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=num_test_samples, mode='val', split_path=split_path )
+    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=num_test_samples, mode='test', split_path=split_path )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,  shuffle=False)
@@ -217,7 +230,7 @@ if __name__ == '__main__':
 
             if test_acc > best_test_acc:
                 best_test_acc = test_acc
-                torch.save(net.state_dict(), f"ckpts_enc_channels_{model_params['in_features']}_best_testacc_{test_acc:.2f}")
+                torch.save(net.state_dict(), f"/u/home/koksal/organ-mesh-registration-and-property-prediction/models/ckpts_enc_channels_{model_params['in_features']}_best_testacc_{test_acc:.2f}")
 
     print('Best Test Accuracy is ',best_test_acc)
 
