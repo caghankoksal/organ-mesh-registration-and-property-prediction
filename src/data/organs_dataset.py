@@ -4,9 +4,15 @@ import pandas as pd
 from torch_geometric.data import Dataset, download_url
 
 
+import os 
+import torch
+import pandas as pd 
+from torch_geometric.data import Dataset, download_url
+
+
 class OrganMeshDataset(Dataset):
     def __init__(self, root, basic_feats_path, bridge_path, split_path, mode='train', organ='liver', 
-                 num_samples = None, transform=None, pre_transform=None, pre_filter=None):
+                 num_samples = None, transform=None, pre_transform=None, pre_filter=None, pre_process=True):
         """ Pytorch Geometric Organ Mesh Dataset 
 
         Args:
@@ -27,12 +33,13 @@ class OrganMeshDataset(Dataset):
 
         self.root = root
         self.organ = organ
-
+        self.pre_process = pre_process
         
         split_path = os.path.join(split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
             self.organ_mesh_ids = f.readlines()
 
+        self.organ_mesh_ids = [each.replace('\n','') for each in self.organ_mesh_ids]
         if num_samples is not None:
             self.organ_mesh_ids = os.listdir(root)[:num_samples]    
 
@@ -44,17 +51,28 @@ class OrganMeshDataset(Dataset):
         self.basic_features = self.basic_features.rename(index=str, columns=new_names)
         self.bridge_organ_df = pd.read_csv(bridge_path)
 
+
+        if self.pre_process:
+            self.patient_feats = {}
+            for cur_patient in self.organ_mesh_ids:
+                cur_patient_features = self.basic_features[self.basic_features['eid'] == int(cur_patient)]
+                self.patient_feats[cur_patient] =cur_patient_features
+    
+        print(f' {mode} Dataset is created')
     def len(self):
         return len(self.organ_mesh_ids)
-
 
     def get(self, idx):
         selected_patient = self.organ_mesh_ids[idx]
         #print('Selected Patient', selected_patient)
         data = torch.load(os.path.join(self.root, selected_patient,f'{self.organ}_mesh.pt'))
-        old_id = data['eid']
-        new_id = selected_patient
-        patient_features = self.basic_features[self.basic_features['eid'] == int(selected_patient)]
+        #old_id = data['eid']
+        #new_id = selected_patient
+        # This might be bottleneck @TODO
+        if self.pre_process:
+            patient_features = self.patient_feats[selected_patient]
+        else:
+            patient_features = self.basic_features[self.basic_features['eid'] == int(selected_patient)]
         #print(patient_features['sex'])
         gender_patient = patient_features['sex'].item()
         #Label of the data is currently gender
