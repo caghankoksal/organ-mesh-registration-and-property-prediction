@@ -28,10 +28,10 @@ def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int,
 
 
 
-class GCN(torch.nn.Module):
+class GNN(torch.nn.Module):
     def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
                  use_input_encoder=True, input_encoder_dim=128, apply_batch_norm=True, apply_dropout_every=True):
-        super(GCN, self).__init__()
+        super(GNN, self).__init__()
         torch.manual_seed(12345)
         
         self.use_input_encoder = use_input_encoder

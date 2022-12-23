@@ -4,3 +4,6 @@ src/models/__pycache__/fsgn_model.cpython-39.pyc
 src/data/__pycache__/organs_dataset.cpython-39.pyc
 mlruns/
 src/models/weight_128
+src/models/wandb/*
+src/models/__pycache__/__init__.cpython-39.pyc
+src/models/__pycache__/baseline_model.cpython-39.pyc
