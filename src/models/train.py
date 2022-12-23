@@ -176,9 +176,10 @@ def training_function(config=None):
     
     # note that we define values from `wandb.config` instead of 
     # defining hard values
-    config = wandb.config
+    #config = wandb.config
     print('Training function config ',config)
     device = config.device
+    print('CURRENT DEVICE',device)
 
     #Data Loader
     train_loader, test_loader = build_dataset(config)
@@ -230,7 +231,7 @@ def training_function(config=None):
 def build_args():
     parser = argparse.ArgumentParser(description='GNN for Organ Meshes')
     parser.add_argument("--model", type=str, default="baseline")
-    parser.add_argument("--device", type=int, default=5)
+    parser.add_argument("--device", default='cuda')
     parser.add_argument("--max_epoch", type=int, default=50,
                         help="number of training epochs")
     parser.add_argument("--enc_feats", type=int, default=128,
@@ -255,7 +256,7 @@ def build_args():
     parser.add_argument("--layer", type=str, default="gcn")
     parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--use_input_encoder", type=bool, default=True)
-    parser.add_argument("--hparam_search", type=bool, default=False)
+    #parser.add_argument("--hparam_search", type=bool, default=False)
     parser.add_argument("--organ", type=str, default="liver")
     args = parser.parse_args()
     return args
@@ -263,7 +264,8 @@ def build_args():
 if __name__ == '__main__':
     args = build_args()
     print('Args : ',args)
-    device = args.device if args.device >= 0 else "cpu"
+
+    device = args.device #if args.device >= 0 else "cpu"
     model = args.model
     max_epoch = args.max_epoch
     num_heads = args.num_heads
@@ -276,51 +278,21 @@ if __name__ == '__main__':
     use_input_encoder = args.use_input_encoder
     num_layers = args.num_layers
     lr = args.lr
-    hparam_search = args.hparam_search
+    #hparam_search = args.hparam_search
 
-    print('Hyperparameter  Searching  ',hparam_search)
-    if hparam_search is True:
-        print('Hyperparameter search starts')
+   
+    print('Usual training starts')
+    run = wandb.init(
+    project="mesh_gnn_organ",
+    notes="tweak baseline",
+    tags=[ "gnn"],
+    config=args,
+    )
 
-        run = wandb.init(project='meshgnn-hparam-search')
 
-        sweep_config = {
-        'method': 'random',
-        'name': 'sweep',
-        'metric': {'goal': 'maximize', 'name': 'val_acc'},
-        'parameters': 
-        {
-            'batch_size': {'value': 32},
-            'max_epoch': {'value': 50},
-            'model': {'value': 'baseline'},
-            'device': {'value': device},
-            'optimizer': {'value': 'adam'},
-            'lr': {'max': 0.1, 'min': 0.0001},
-            'num_layers': {'values': [3, 4, 5, 6, 7, 8]},
-            'use_input_encoder': {'value':True},
-            'num_train_samples': {'value':3000},
-            'num_test_samples': {'value':300},
-            'layer': {'values':['sageconv','gcn']},
-            'hidden_channels': {'values': [32, 64, 128, 256]},
-            'enc_feats': {'values': [32, 64, 128, 256, 512]},
-            'num_heads': {'values': [4, 8, 12]},
-        }
-    }
-        # 🐝 Step 3: Initialize sweep by passing in config
-        sweep_id = wandb.sweep(sweep=sweep_config, project='meshgnn-hparam-search')
-        import pprint
-        wandb.agent(sweep_id, training_function, count=10)
-
-    else:
-        print('Usual training starts')
-        run = wandb.init(
-        project="mesh_gnn_organ",
-        notes="tweak baseline",
-        tags=[ "gnn"],
-        config=args,
-        )
-
-        training_function()
+    wdb_config = wandb.config
+    print('WDB CONFIG ',wdb_config)
+    training_function(wdb_config)
 
     
 
