@@ -23,6 +23,19 @@ conda activate mesh_gnn_organ
 conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
 
 ```
+# Hyperparameter search with Wandb Sweeps
+Initialize Sweep project from sweep_config.yaml file 
+```
+wandb sweep --project sweeps_mesh sweeps_config.yaml 
+```
+Set the gpu by using CUDA_VISIBLE_DEVICES and use the sweep_ID that is generated in previous command.
+```
+CUDA_VISIBLE_DEVICES=0 wandb agent sweep_ID
+```
+
+
+
+
 - [ ] Check the playground notebooks for usage examples
 
 Project Organization
