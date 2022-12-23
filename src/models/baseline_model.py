@@ -30,7 +30,7 @@ def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int,
 
 class GNN(torch.nn.Module):
     def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
-                 use_input_encoder=True, input_encoder_dim=128, apply_batch_norm=True, apply_dropout_every=True):
+                 use_input_encoder=True, encoder_features=128, apply_batch_norm=True, apply_dropout_every=True):
         super(GNN, self).__init__()
         torch.manual_seed(12345)
         
@@ -39,10 +39,10 @@ class GNN(torch.nn.Module):
         self.apply_dropout_every = apply_dropout_every
         if self.use_input_encoder :
             self.input_encoder = get_mlp_layers(
-                channels=[in_features, input_encoder_dim],
+                channels=[in_features, encoder_features],
                 activation=nn.ELU,
             )
-            in_features = input_encoder_dim
+            in_features = encoder_features
 
         if layer == 'gcn':
             self.layers = get_gnn_layers(num_layers, hidden_channels, num_inp_features=in_features,

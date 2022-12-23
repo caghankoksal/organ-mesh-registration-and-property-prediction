@@ -137,11 +137,12 @@ def build_network(configs):
         
         print('Baseline Model is initialized')
         model_params = dict(
-
+        use_input_encoder = configs.use_input_encoder,
+        num_classes=configs.num_classes,
+        in_features=configs.in_features, 
+        encoder_features = configs.enc_feats,
         hidden_channels=configs.hidden_channels,
         layer = configs.layer,
-        use_input_encoder = configs.use_input_encoder,
-        input_encoder_dim = configs.enc_feats,
         num_layers = configs.num_layers,
         )
         net = GNN(**model_params)
@@ -156,9 +157,15 @@ def build_dataset(config):
     bridge_path = '/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv'
     split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
 
-    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, num_samples=config.num_train_samples, mode='train', split_path=split_path )
-    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=config.num_test_samples, mode='val', split_path=split_path )
-    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  num_samples=config.num_test_samples, mode='test', split_path=split_path )
+    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path,
+                                    num_samples=config.num_train_samples, mode='train', organ=config.organ)
+
+    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path,
+                                    num_samples=config.num_test_samples, mode='val', organ=config.organ)
+
+    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  split_path=split_path,
+                                    num_samples=config.num_test_samples, mode='test', organ=config.organ)
+                                    
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=config.batch_size,  shuffle=False)
 
@@ -215,14 +222,14 @@ def training_function(config=None):
                 wandb.run.summary["best_test_acc"] = 100 *best_test_acc
                 wandb.run.summary["best_train_acc"] = 100 * train_acc
                 savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
-                torch.save(net.state_dict(), f"{savedir}cenc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}")
+                torch.save(net.state_dict(), f"{savedir}organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}")
 
     print('Best Test Accuracy is ',best_test_acc)
 
 
 def build_args():
     parser = argparse.ArgumentParser(description='GNN for Organ Meshes')
-    parser.add_argument("--model", type=str, default="fsgnet")
+    parser.add_argument("--model", type=str, default="baseline")
     parser.add_argument("--device", type=int, default=5)
     parser.add_argument("--max_epoch", type=int, default=50,
                         help="number of training epochs")
@@ -249,6 +256,7 @@ def build_args():
     parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--use_input_encoder", type=bool, default=True)
     parser.add_argument("--hparam_search", type=bool, default=False)
+    parser.add_argument("--organ", type=str, default="liver")
     args = parser.parse_args()
     return args
 

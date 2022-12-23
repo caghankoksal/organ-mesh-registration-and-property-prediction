@@ -30,6 +30,7 @@ class OrganMeshDataset(Dataset):
     
         super().__init__(root, transform, pre_transform, pre_filter)
         assert mode in ['train', 'val', 'test']
+        assert organ in ['left_kidney', 'liver', 'pancreas', 'right_kidney', 'spleen']
 
         self.root = root
         self.organ = organ
@@ -58,7 +59,7 @@ class OrganMeshDataset(Dataset):
                 cur_patient_features = self.basic_features[self.basic_features['eid'] == int(cur_patient)]
                 self.patient_feats[cur_patient] =cur_patient_features
     
-        print(f' {mode} Dataset is created')
+        print(f'{organ.capitalize()}  {mode} Dataset is created')
     def len(self):
         return len(self.organ_mesh_ids)
 
