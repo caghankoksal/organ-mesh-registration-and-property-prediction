@@ -7,3 +7,5 @@ src/models/weight_128
 src/models/wandb/*
 src/models/__pycache__/__init__.cpython-39.pyc
 src/models/__pycache__/baseline_model.cpython-39.pyc
+models/*
+wandb/*
