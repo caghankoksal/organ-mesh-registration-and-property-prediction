@@ -12,7 +12,8 @@ from torch_geometric.data import Dataset, download_url
 
 class OrganMeshDataset(Dataset):
     def __init__(self, root, basic_feats_path, bridge_path, split_path, mode='train', organ='liver', 
-                 num_samples = None, transform=None, pre_transform=None, pre_filter=None, pre_process=True):
+                 num_samples = None, transform=None, pre_transform=None, pre_filter=None,
+                  pre_process=True, task="sex_prediction",  use_registered_data = True):
         """ Pytorch Geometric Organ Mesh Dataset 
 
         Args:
@@ -35,7 +36,9 @@ class OrganMeshDataset(Dataset):
         self.root = root
         self.organ = organ
         self.pre_process = pre_process
-        
+        self.task = task
+        self.use_registered_data = use_registered_data
+  
         split_path = os.path.join(split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
             self.organ_mesh_ids = f.readlines()
@@ -51,13 +54,12 @@ class OrganMeshDataset(Dataset):
         new_names = {'21003-2.0':'age', '31-0.0':'sex', '21001-2.0':'bmi', '21002-2.0':'weight','50-2.0':'standing_weight'}
         self.basic_features = self.basic_features.rename(index=str, columns=new_names)
         self.bridge_organ_df = pd.read_csv(bridge_path)
-
-
+    
         if self.pre_process:
             self.patient_feats = {}
             for cur_patient in self.organ_mesh_ids:
                 cur_patient_features = self.basic_features[self.basic_features['eid'] == int(cur_patient)]
-                self.patient_feats[cur_patient] =cur_patient_features
+                self.patient_feats[cur_patient] = cur_patient_features
     
         print(f'{organ.capitalize()}  {mode} Dataset is created')
     def len(self):
@@ -66,7 +68,11 @@ class OrganMeshDataset(Dataset):
     def get(self, idx):
         selected_patient = self.organ_mesh_ids[idx]
         #print('Selected Patient', selected_patient)
-        data = torch.load(os.path.join(self.root, selected_patient,f'{self.organ}_mesh.pt'))
+        if self.use_registered_data:
+            data = 'Fill here'
+        else:
+            data = torch.load(os.path.join(self.root, selected_patient,f'{self.organ}_mesh.pt'))
+    
         #old_id = data['eid']
         #new_id = selected_patient
         # This might be bottleneck @TODO
@@ -75,8 +81,13 @@ class OrganMeshDataset(Dataset):
         else:
             patient_features = self.basic_features[self.basic_features['eid'] == int(selected_patient)]
         #print(patient_features['sex'])
-        gender_patient = patient_features['sex'].item()
-        #Label of the data is currently gender
-        data.y = int(gender_patient)
+        if self.task== 'sex_prediction':
+            gender_patient = patient_features['sex'].item()
+            #Label of the data is currently gender
+            data.y = int(gender_patient)
+        elif self.task== 'age_prediction':
+            gender_age = patient_features['age'].item()
+            data.y = int(gender_age)
+        
         return data
     

@@ -1,16 +1,19 @@
 import sys
+import os
 import wandb
 sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
 
 import torch
-from fsgn_model import MeshSeg
+from src.models.fsgn_model import MeshSeg
 from src.data.organs_dataset import OrganMeshDataset
 from torch_geometric.data import DataLoader
 from tqdm import tqdm
 from time import sleep
 import mlflow
-from baseline_model import GNN
+from src.models.baseline_model import GNN
 import argparse
+from sklearn.metrics import r2_score
+from torchmetrics import R2Score
 
 def train(net, train_data, optimizer, loss_fn, device):
     """Train network on training dataset."""
@@ -73,7 +76,7 @@ def accuracy(predictions, gt_seg_labels):
     return float(correct_assignments / num_assignemnts)
 
 
-def evaluate_performance(dataset, net, device):
+def evaluate_performance(dataset, net, device, task='classification'):
     """Evaluate network performance on given dataset.
 
     Parameters
@@ -95,16 +98,29 @@ def evaluate_performance(dataset, net, device):
     for data in dataset:
         data = data.to(device)
         predictions = net(data)
-        prediction_accuracies.append(accuracy(predictions.squeeze(1), data.y))
+        if task == 'classification':
+            prediction_accuracies.append(accuracy(predictions.squeeze(1), data.y))
+        elif task == 'regression':
+            r2score = R2Score().to(device)
+            prediction_accuracies.append(r2score(predictions.squeeze(1), data.y))
+            #prediction_accuracies.append(r2_score(predictions.cpu().detach().numpy(), data.y.cpu()))
+        
     return sum(prediction_accuracies) / len(prediction_accuracies)
 
 @torch.no_grad()
-def test(net, train_data, test_data, device):
+def test_classification(net, train_data, test_data, device):
     net.eval()
     train_acc = evaluate_performance(train_data, net, device)
     test_acc = evaluate_performance(test_data, net, device)
     return train_acc, test_acc
 
+
+@torch.no_grad()
+def test_regression(net, train_data, test_data, device):
+    net.eval()
+    train_score = evaluate_performance(train_data, net, device, task='regression')
+    test_score = evaluate_performance(test_data, net, device, task='regression')
+    return train_score, test_score
 
 def build_optimizer(network, optimizer, learning_rate):
     if optimizer == "sgd":
@@ -158,13 +174,16 @@ def build_dataset(config):
     split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
 
     train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path,
-                                    num_samples=config.num_train_samples, mode='train', organ=config.organ)
+                                    num_samples=config.num_train_samples, mode='train', organ=config.organ, 
+                                    task=config.task, use_registered_data = config.use_registered_data)
 
     val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path,
-                                    num_samples=config.num_test_samples, mode='val', organ=config.organ)
+                                    num_samples=config.num_test_samples, mode='val', organ=config.organ,
+                                     task=config.task, use_registered_data = config.use_registered_data)
 
     test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  split_path=split_path,
-                                    num_samples=config.num_test_samples, mode='test', organ=config.organ)
+                                    num_samples=config.num_test_samples, mode='test', organ=config.organ,
+                                     task=config.task, use_registered_data = config.use_registered_data)
                                     
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=config.batch_size,  shuffle=False)
@@ -179,7 +198,7 @@ def training_function(config=None):
     #config = wandb.config
     print('Training function config ',config)
     device = config.device
-    print('CURRENT DEVICE',device)
+    print('Current Device',device)
 
     #Data Loader
     train_loader, test_loader = build_dataset(config)
@@ -191,9 +210,13 @@ def training_function(config=None):
     optimizer = build_optimizer(net, config.optimizer, config.lr)
 
     #Loss Function
-    loss_fn = torch.nn.BCEWithLogitsLoss()
+    if config.task == 'sex_prediction':
+        loss_fn = torch.nn.BCEWithLogitsLoss()
+    elif config.task == 'age_prediction':
+        loss_fn = torch.nn.MSELoss()
 
     best_test_acc = 0
+    best_test_r2_score = 0
 
     with tqdm(range(config.max_epoch), unit="Epoch") as tepochs:
         for epoch in tepochs:
@@ -202,30 +225,64 @@ def training_function(config=None):
             #mlflow.log_metric('train_loss',train_loss)
             #mlflow.log_metric('val_loss',val_loss)
             wandb.log({'train_loss': train_loss, 'val_loss':val_loss, 'epoch': epoch})
-            train_acc, test_acc = test(net, train_loader, test_loader, device)
-            #mlflow.log_metric('train_acc',train_acc)
-            #mlflow.log_metric('test_acc',test_acc)
-            wandb.log({'train_acc': train_acc, 'test_acc':test_acc, 'epoch': epoch})
-
             
-            tepochs.set_postfix(
+            if config.task == 'sex_prediction':
+                train_acc, test_acc = test_classification(net, train_loader, test_loader, device)
+                wandb.log({'train_acc': train_acc, 'test_acc':test_acc, 'epoch': epoch})
+
+                tepochs.set_postfix(
                 train_loss=train_loss,
                 val_loss = val_loss,
                 train_accuracy=100 * train_acc,
                 test_accuracy=100 * test_acc,
-            )
-            sleep(0.1)
+                )
+                sleep(0.1)
 
+
+            elif config.task == 'age_prediction':
+                train_r2_score, test_r2_score = test_regression(net, train_loader, test_loader, device)
+                wandb.log({'train_score': train_r2_score, 'test_score':test_r2_score, 'epoch': epoch})
+
+                tepochs.set_postfix(
+                train_loss=train_loss,
+                val_loss = val_loss,
+                train_r2_score= train_r2_score,
+                test_r2_score = test_r2_score)
+                sleep(0.1)
+            
             wandb.watch(net)
 
-            if test_acc > best_test_acc:
-                best_test_acc = test_acc
-                wandb.run.summary["best_test_acc"] = 100 *best_test_acc
-                wandb.run.summary["best_train_acc"] = 100 * train_acc
-                savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
-                torch.save(net.state_dict(), f"{savedir}organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}")
+            if config.task == 'sex_prediction':
+                if test_acc > best_test_acc:
+                    best_test_acc = test_acc
+                    wandb.run.summary["best_test_acc"] = 100 *best_test_acc
+                    wandb.run.summary["best_train_acc"] = 100 * train_acc
+                    savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = os.path.join(savedir, str(wandb.run.name))
+                    if  not os.path.exists(savedir):
+                        os.makedirs(savedir)
+                    torch.save({'model': net.state_dict(), 
+                                'config': {k:v
+                                for k,v in config.items()} }, f"{savedir}/classification_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}.pth")
 
-    print('Best Test Accuracy is ',best_test_acc)
+            elif config.task == 'age_prediction':
+                if test_r2_score > best_test_r2_score:
+                    best_test_r2_score = test_r2_score
+                    wandb.run.summary["best_test_acc"] = test_r2_score
+                    wandb.run.summary["best_train_acc"] = train_r2_score
+                    savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = os.path.join(savedir, str(wandb.run.name))
+                    if  not os.path.exists(savedir):
+                        os.makedirs(savedir)
+                    torch.save({'model': net.state_dict(), 
+                                'config': {k:v
+                                for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{best_test_r2_score}.pth")
+
+    if config.task == 'sex_prediction':
+        print('Best Test Accuracy is ',best_test_acc)
+    elif config.task == 'age_prediction':
+        print('Best Test R2 score is ',best_test_r2_score)
+    
 
 
 def build_args():
@@ -258,6 +315,8 @@ def build_args():
     parser.add_argument("--use_input_encoder", type=bool, default=True)
     #parser.add_argument("--hparam_search", type=bool, default=False)
     parser.add_argument("--organ", type=str, default="liver")
+    parser.add_argument("--task", type=str, default="sex_prediction")
+    parser.add_argument("--use_registered_data", type=bool, default=False)
     args = parser.parse_args()
     return args
 
@@ -266,6 +325,10 @@ if __name__ == '__main__':
     print('Args : ',args)
 
     device = args.device #if args.device >= 0 else "cpu"
+
+    if args.device != 'cuda' and args.device != 'cpu':
+        device = int(args.device)
+        
     model = args.model
     max_epoch = args.max_epoch
     num_heads = args.num_heads
@@ -278,6 +341,7 @@ if __name__ == '__main__':
     use_input_encoder = args.use_input_encoder
     num_layers = args.num_layers
     lr = args.lr
+    task = args.task
     #hparam_search = args.hparam_search
 
    
@@ -289,10 +353,12 @@ if __name__ == '__main__':
     config=args,
     )
 
+    wandb.config.update( {'device':device }, allow_val_change=True)
+    #wandb.config.device = device
 
-    wdb_config = wandb.config
-    print('WDB CONFIG ',wdb_config)
-    training_function(wdb_config)
+    #wdb_config = wandb.config
+    print('WDB CONFIG ',wandb.config)
+    training_function(wandb.config)
 
     
 

@@ -3,7 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, SAGEConv, LayerNorm, Linear
 from torch_geometric.nn import global_mean_pool
-from fsgn_model import get_mlp_layers
+from src.models.fsgn_model import get_mlp_layers
 
 
 
@@ -30,8 +30,11 @@ def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int,
 
 class GNN(torch.nn.Module):
     def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
-                 use_input_encoder=True, encoder_features=128, apply_batch_norm=True, apply_dropout_every=True):
+                 use_input_encoder=True, encoder_features=128, apply_batch_norm=True,
+                 apply_dropout_every=True, task='sex_prediction'):
         super(GNN, self).__init__()
+
+        assert task in ['age_classification', 'sex_prediction']
         torch.manual_seed(12345)
         
         self.use_input_encoder = use_input_encoder
@@ -57,7 +60,11 @@ class GNN(torch.nn.Module):
         #    )
 
 
-        self.lin = Linear(hidden_channels, num_classes)
+        if task == 'sex_prediction':
+            self.pred_layer = Linear(hidden_channels, num_classes)
+        elif task == 'age_classification':
+            self.pred_layer = Linear(hidden_channels, 1)
+
 
 
     def forward(self, data):
@@ -83,6 +90,6 @@ class GNN(torch.nn.Module):
 
         # 3. Apply a final classifier
         x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin(x)
+        x = self.pred_layer(x)
         
         return x
