@@ -1,17 +1,13 @@
 import os 
 import torch
 import pandas as pd 
-from torch_geometric.data import Dataset, download_url
-
-
-import os 
-import torch
-import pandas as pd 
-from torch_geometric.data import Dataset, download_url
+import numpy as np
+from torch_geometric.data import Dataset, download_url, Data
+import open3d as o3d
 
 
 class OrganMeshDataset(Dataset):
-    def __init__(self, root, basic_feats_path, bridge_path, split_path, mode='train', organ='liver', 
+    def __init__(self, root, basic_feats_path, bridge_path, split_path, decimation_path, registeration_path, mode='train', organ='liver', 
                  num_samples = None, transform=None, pre_transform=None, pre_filter=None,
                   pre_process=True, task="sex_prediction",  use_registered_data = True):
         """ Pytorch Geometric Organ Mesh Dataset 
@@ -38,6 +34,8 @@ class OrganMeshDataset(Dataset):
         self.pre_process = pre_process
         self.task = task
         self.use_registered_data = use_registered_data
+        self.decimation_path = decimation_path
+        self.registeration_path = registeration_path
   
         split_path = os.path.join(split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
@@ -69,7 +67,23 @@ class OrganMeshDataset(Dataset):
         selected_patient = self.organ_mesh_ids[idx]
         #print('Selected Patient', selected_patient)
         if self.use_registered_data:
-            data = 'Fill here'
+            registered_mesh = []
+            vertices_data = o3d.io.read_triangle_mesh(os.path.join(self.registration_path, str(selected_patient), f'{self.organ}_mesh.pt'))
+            edges_data = o3d.io.read_triangle_mesh(os.path.join(self.decimation_path, str(selected_patient), f'{self.organ}_mesh.pt'))
+            vertices = torch.from_numpy(np.asarray(vertices_data.vertices)).double()
+            triangles = np.asarray(edges_data.triangles)
+
+            edges = []
+            for triangle in triangles:
+                edges.append([triangle[0], triangle[1]])
+                edges.append([triangle[0], triangle[2]])
+                edges.append([triangle[1], triangle[2]])
+
+            edges_torch = torch.from_numpy(np.unique(np.array(edges), axis=0).reshape(2,-1)).long()
+            eid = self.bridge_organ_df[self.bridge_organ_df['eid_87802'] == int(selected_patient)]["eid_60520"].values[0]
+            sex = 0 if int(self.basic_features["sex"][self.basic_features.index[self.basic_features['eid'] == int(selected_patient)]]) == 0 else 1
+            registered_mesh.append((vertices, edges_torch, sex, eid))
+            data = Data(x=registered_mesh[0], edge_index=registered_mesh[1], y=registered_mesh[2], num_nodes= len(registered_mesh[0]), eid=registered_mesh[3])
         else:
             data = torch.load(os.path.join(self.root, selected_patient,f'{self.organ}_mesh.pt'))
     

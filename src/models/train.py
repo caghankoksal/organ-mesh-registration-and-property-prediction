@@ -171,19 +171,21 @@ def build_dataset(config):
     root = '/vol/chameleon/projects/mesh_gnn/organ_meshes'
     basic_feat_path = '/vol/chameleon/projects/mesh_gnn/basic_features.csv'
     bridge_path = '/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv'
+    decimation_path = "/data0/practical-wise2223/organ_mesh/organ_decimations_ply/"
+    registeration_path = "/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/"
     split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
 
-    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path,
-                                    num_samples=config.num_train_samples, mode='train', organ=config.organ, 
-                                    task=config.task, use_registered_data = config.use_registered_data)
+    train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path, decimation_path=decimation_path,
+                                    registeration_path = registeration_path, num_samples=config.num_train_samples, mode='train',
+                                    organ=config.organ, task=config.task, use_registered_data = config.use_registered_data)
 
-    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path,
-                                    num_samples=config.num_test_samples, mode='val', organ=config.organ,
-                                     task=config.task, use_registered_data = config.use_registered_data)
+    val_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path, decimation_path=decimation_path,
+                                    registeration_path = registeration_path, num_samples=config.num_test_samples, mode='val',
+                                    organ=config.organ, task=config.task, use_registered_data = config.use_registered_data)
 
-    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  split_path=split_path,
-                                    num_samples=config.num_test_samples, mode='test', organ=config.organ,
-                                     task=config.task, use_registered_data = config.use_registered_data)
+    test_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path,  split_path=split_path, decimation_path=decimation_path,
+                                    registeration_path = registeration_path, num_samples=config.num_test_samples, mode='test', 
+                                    organ=config.organ, task=config.task, use_registered_data = config.use_registered_data)
                                     
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=config.batch_size,  shuffle=False)
@@ -317,6 +319,8 @@ def build_args():
     parser.add_argument("--organ", type=str, default="liver")
     parser.add_argument("--task", type=str, default="sex_prediction")
     parser.add_argument("--use_registered_data", type=bool, default=False)
+    parser.add_argument("--decimation_path", type=str, default="/data0/practical-wise2223/organ_mesh/organ_decimations_ply/")
+    parser.add_argument("--registeration_path", type=str, default="/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/")
     args = parser.parse_args()
     return args
 
