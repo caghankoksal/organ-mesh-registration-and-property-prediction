@@ -68,7 +68,7 @@ class OrganMeshDataset(Dataset):
         #print('Selected Patient', selected_patient)
         if self.use_registered_data:
             registered_mesh = []
-            vertices_data = o3d.io.read_triangle_mesh(os.path.join(self.registration_path, str(selected_patient), f'{self.organ}_mesh.pt'))
+            vertices_data = o3d.io.read_triangle_mesh(os.path.join(self.registeration_path, str(selected_patient), f'{self.organ}_mesh.pt'))
             edges_data = o3d.io.read_triangle_mesh(os.path.join(self.decimation_path, str(selected_patient), f'{self.organ}_mesh.pt'))
             vertices = torch.from_numpy(np.asarray(vertices_data.vertices)).double()
             triangles = np.asarray(edges_data.triangles)
