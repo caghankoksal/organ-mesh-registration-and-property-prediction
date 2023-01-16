@@ -168,12 +168,12 @@ def build_network(configs):
 
 def build_dataset(config):
         # Build Dataset
-    root = '/vol/chameleon/projects/mesh_gnn/organ_meshes'
-    basic_feat_path = '/vol/chameleon/projects/mesh_gnn/basic_features.csv'
-    bridge_path = '/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv'
-    decimation_path = "/data0/practical-wise2223/organ_mesh/organ_decimations_ply/"
-    registeration_path = "/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/"
-    split_path = '/u/home/koksal/organ-mesh-registration-and-property-prediction/data/'
+    root = config.root
+    basic_feat_path = config.basic_feat_path
+    bridge_path = config.bridge_path
+    decimation_path = config.decimation_path
+    registeration_path = config.registeration_path
+    split_path = config.split_path
 
     train_dataset = OrganMeshDataset(root, basic_feat_path, bridge_path, split_path=split_path, decimation_path=decimation_path,
                                     registeration_path = registeration_path, num_samples=config.num_train_samples, mode='train',
@@ -321,6 +321,11 @@ def build_args():
     parser.add_argument("--use_registered_data", type=bool, default=False)
     parser.add_argument("--decimation_path", type=str, default="/data0/practical-wise2223/organ_mesh/organ_decimations_ply/")
     parser.add_argument("--registeration_path", type=str, default="/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/")
+    parser.add_argument("--split_path", type=str, default='/u/home/koksal/organ-mesh-registration-and-property-prediction/data/')
+    parser.add_argument("--root", type=str, default='/vol/chameleon/projects/mesh_gnn/organ_meshes')
+    parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
+    parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
+    
     args = parser.parse_args()
     return args
 
