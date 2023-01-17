@@ -12,9 +12,8 @@ from time import sleep
 import mlflow
 from src.models.baseline_model import GNN
 import argparse
-from sklearn.metrics import r2_score
 from torchmetrics import R2Score
-
+from copy import deepcopy
 def train(net, train_data, optimizer, loss_fn, device):
     """Train network on training dataset."""
     net.train()
@@ -263,7 +262,7 @@ def training_function(config=None):
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
-                    torch.save({'model': net.state_dict(), 
+                    torch.save({'model':  deepcopy(net.state_dict()), 
                                 'config': {k:v
                                 for k,v in config.items()} }, f"{savedir}/classification_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}.pth")
 
@@ -276,7 +275,7 @@ def training_function(config=None):
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
-                    torch.save({'model': net.state_dict(), 
+                    torch.save({'model': deepcopy(net.state_dict()),  
                                 'config': {k:v
                                 for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{best_test_r2_score}.pth")
 
@@ -368,6 +367,3 @@ if __name__ == '__main__':
     #wdb_config = wandb.config
     print('WDB CONFIG ',wandb.config)
     training_function(wandb.config)
-
-    
-
