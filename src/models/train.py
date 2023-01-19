@@ -165,7 +165,7 @@ def build_network(configs):
     return net
 
 
-def build_dataset(config):
+def build_dataset(config, return_dataset):
         # Build Dataset
     root = config.root
     basic_feat_path = config.basic_feat_path
@@ -188,6 +188,9 @@ def build_dataset(config):
                                     
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=config.batch_size,  shuffle=False)
+
+    if return_dataset:
+        return train_dataset, val_dataset
 
     return train_loader, test_loader
 
