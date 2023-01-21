@@ -68,9 +68,10 @@ class OrganMeshDataset(Dataset):
         #print('Selected Patient', selected_patient)
         if self.use_registered_data:
             registered_mesh = []
-            vertices_data = o3d.io.read_triangle_mesh(os.path.join(self.registeration_path, str(selected_patient), f'{self.organ}_mesh.pt'))
-            edges_data = o3d.io.read_triangle_mesh(os.path.join(self.decimation_path, str(selected_patient), f'{self.organ}_mesh.pt'))
-            vertices = torch.from_numpy(np.asarray(vertices_data.vertices)).double()
+            organ = f'{self.organ}_mesh.ply' 
+            vertices_data = o3d.io.read_point_cloud(os.path.join(self.registeration_path, str(selected_patient), organ))
+            edges_data = o3d.io.read_triangle_mesh(os.path.join(self.decimation_path, str(selected_patient), organ))
+            vertices = torch.from_numpy(np.asarray(vertices_data.points)).double()
             triangles = np.asarray(edges_data.triangles)
 
             edges = []
@@ -82,8 +83,8 @@ class OrganMeshDataset(Dataset):
             edges_torch = torch.from_numpy(np.unique(np.array(edges), axis=0).reshape(2,-1)).long()
             eid = self.bridge_organ_df[self.bridge_organ_df['eid_87802'] == int(selected_patient)]["eid_60520"].values[0]
             sex = 0 if int(self.basic_features["sex"][self.basic_features.index[self.basic_features['eid'] == int(selected_patient)]]) == 0 else 1
-            registered_mesh.append((vertices, edges_torch, sex, eid))
-            data = Data(x=registered_mesh[0], edge_index=registered_mesh[1], y=registered_mesh[2], num_nodes= len(registered_mesh[0]), eid=registered_mesh[3])
+            registered_mesh.append((vertices.type(torch.float32), edges_torch, sex, str(eid)))
+            data = Data(x=registered_mesh[0][0], edge_index=registered_mesh[0][1], y=registered_mesh[0][2], num_nodes= len(registered_mesh[0][0]), eid=registered_mesh[0][3])
         else:
             data = torch.load(os.path.join(self.root, selected_patient,f'{self.organ}_mesh.pt'))
     

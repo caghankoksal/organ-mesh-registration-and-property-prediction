@@ -1,7 +1,7 @@
 import sys
 import os
 import wandb
-sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
+sys.path.append('/u/home/wyo/organ-mesh-registration-and-property-prediction/')
 
 import torch
 from src.models.fsgn_model import MeshSeg
@@ -259,7 +259,7 @@ def training_function(config=None):
                     best_test_acc = test_acc
                     wandb.run.summary["best_test_acc"] = 100 *best_test_acc
                     wandb.run.summary["best_train_acc"] = 100 * train_acc
-                    savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = '/u/home/wyo/organ-mesh-registration-and-property-prediction/models/'
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
@@ -272,7 +272,7 @@ def training_function(config=None):
                     best_test_r2_score = test_r2_score
                     wandb.run.summary["best_test_acc"] = test_r2_score
                     wandb.run.summary["best_train_acc"] = train_r2_score
-                    savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = '/u/home/wyo/organ-mesh-registration-and-property-prediction/models/'
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
