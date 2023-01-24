@@ -29,8 +29,8 @@ def train(net, train_data, optimizer, loss_fn, device):
         data = data.to(device)
         optimizer.zero_grad()
         out = net(data)
-        #print('Out shape ', out.shape, out)
-        #print('data y shape', data.y.shape)
+        print('Out shape ', out.shape)
+        print('data y shape', data.y.shape)
         loss = loss_fn(out.squeeze(1), data.y.float())
         loss.backward()
         cumulative_loss += loss.item()
@@ -82,7 +82,7 @@ def accuracy(predictions, gt_seg_labels):
     return float(correct_assignments / num_assignemnts)
 
 
-def evaluate_performance(dataset, net, device, task='classification'):
+def evaluate_performance(dataset, net, device, configs, task='classification'):
     """Evaluate network performance on given dataset.
 
     Parameters
@@ -107,25 +107,30 @@ def evaluate_performance(dataset, net, device, task='classification'):
         if task == 'classification':
             prediction_accuracies.append(accuracy(predictions.squeeze(1), data.y))
         elif task == 'regression':
-            r2score = R2Score().to(device)
-            prediction_accuracies.append(r2score(predictions.squeeze(1), data.y))
+            if configs.eval_method == 'r2':
+                measure_score = R2Score().to(device)
+            elif configs.eval_method == 'mse':
+                measure_score = torch.nn.MSELoss().to(device)
+            elif configs.eval_method == 'mae':
+                measure_score = torch.nn.L1Loss().to(device)
+            prediction_accuracies.append(measure_score(predictions.squeeze(1), data.y))
             #prediction_accuracies.append(r2_score(predictions.cpu().detach().numpy(), data.y.cpu()))
         
     return sum(prediction_accuracies) / len(prediction_accuracies)
 
 @torch.no_grad()
-def test_classification(net, train_data, test_data, device):
+def test_classification(net, train_data, test_data, configs):
     net.eval()
-    train_acc = evaluate_performance(train_data, net, device)
-    test_acc = evaluate_performance(test_data, net, device)
+    train_acc = evaluate_performance(train_data, net, configs.device)
+    test_acc = evaluate_performance(test_data, net, configs.device)
     return train_acc, test_acc
 
 
 @torch.no_grad()
-def test_regression(net, train_data, test_data, device):
+def test_regression(net, train_data, test_data, configs):
     net.eval()
-    train_score = evaluate_performance(train_data, net, device, task='regression')
-    test_score = evaluate_performance(test_data, net, device, task='regression')
+    train_score = evaluate_performance(train_data, net, configs.device, task='regression')
+    test_score = evaluate_performance(test_data, net, configs.device, task='regression')
     return train_score, test_score
 
 def build_optimizer(network, optimizer, learning_rate):
@@ -149,7 +154,7 @@ def build_network(configs):
         conv_channels=[256, 256, 256, 256],
         encoder_channels=[configs.enc_feats],
         decoder_channels=[256],
-        num_heads=num_heads,
+        num_heads=configs.num_heads,
         apply_batch_norm=True,  
     ) 
 
@@ -224,7 +229,10 @@ def training_function(config=None):
     if config.task == 'sex_prediction':
         loss_fn = torch.nn.BCEWithLogitsLoss()
     elif config.task == 'age_prediction':
-        loss_fn = torch.nn.MSELoss()
+        if config.loss == 'mse':
+            loss_fn = torch.nn.MSELoss()
+        elif config.loss == 'mae':
+            loss_fn = torch.nn.L1Loss()
 
     best_test_acc = 0
     best_test_r2_score = 0
@@ -331,10 +339,12 @@ def build_args():
     parser.add_argument("--decimation_path", type=str, default="/data0/practical-wise2223/organ_mesh/organ_decimations_ply/")
     parser.add_argument("--registeration_path", type=str, default="/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/")
     parser.add_argument("--split_path", type=str, default='/u/home/koksal/organ-mesh-registration-and-property-prediction/data/')
-    parser.add_argument("--root", type=str, default='/vol/chameleon/projects/mesh_gnn/organ_meshes')
+    parser.add_argument("--root", type=str, default='/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/')
     parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
     parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
     parser.add_argument("--return_dataset", type=bool, default=False)
+    parser.add_argument("--loss", type=str, default='mae')
+    parser.add_argument("--eval_method", type=str, default='mae')
     
     
     args = parser.parse_args()
@@ -349,19 +359,19 @@ if __name__ == '__main__':
     if args.device != 'cuda' and args.device != 'cpu':
         device = int(args.device)
         
-    model = args.model
-    max_epoch = args.max_epoch
-    num_heads = args.num_heads
-    enc_feats = args.enc_feats
-    hidden_channels = args.hidden_channels
-    batch_size = args.batch_size
-    layer = args.layer
-    num_train_samples = args.num_train_samples
-    num_test_samples = args.num_test_samples
-    use_input_encoder = args.use_input_encoder
-    num_layers = args.num_layers
-    lr = args.lr
-    task = args.task
+    #model = args.model
+    #max_epoch = args.max_epoch
+    #num_heads = args.num_heads
+    #enc_feats = args.enc_feats
+    #hidden_channels = args.hidden_channels
+    #batch_size = args.batch_size
+    #layer = args.layer
+    #num_train_samples = args.num_train_samples
+    #num_test_samples = args.num_test_samples
+    #use_input_encoder = args.use_input_encoder
+    #num_layers = args.num_layers
+    #lr = args.lr
+    #task = args.task
     #hparam_search = args.hparam_search
 
    
