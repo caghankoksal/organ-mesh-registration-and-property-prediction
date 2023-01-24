@@ -43,7 +43,7 @@ class OrganMeshDataset(Dataset):
 
         self.organ_mesh_ids = [each.replace('\n','') for each in self.organ_mesh_ids]
         if num_samples is not None:
-            self.organ_mesh_ids = os.listdir(root)[:num_samples]    
+            self.organ_mesh_ids = self.organ_mesh_ids[:num_samples]    
 
         self.basic_feats_path = basic_feats_path 
         self.bridge_path = bridge_path
