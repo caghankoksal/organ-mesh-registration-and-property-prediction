@@ -14,7 +14,7 @@ parameters:
     min: 0.0001
     max: 0.1
   optimizer:
-    values: ["adam", "sgd"]
+    values: ["adam"] #, "sgd"
   batch_size:
     value: 32
   max_epoch:
@@ -34,5 +34,5 @@ parameters:
   enc_feats:
     values: [32, 64, 128, 256, 512]
   model:
-    value: baseline
+    value: fsgnet
 

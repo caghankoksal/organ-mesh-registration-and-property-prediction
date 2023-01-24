@@ -205,9 +205,10 @@ def training_function(config=None):
     print('Current Device',device)
 
     #Data Loader
-    train_loader, test_loader = build_dataset(config)
+    train_loader, test_loader = build_dataset(config, False)
 
     #Network
+    print(device)
     net = build_network(config).to(device)
     
     #Optimizer
@@ -217,7 +218,7 @@ def training_function(config=None):
     if config.task == 'sex_prediction':
         loss_fn = torch.nn.BCEWithLogitsLoss()
     elif config.task == 'age_prediction':
-        loss_fn = torch.nn.MSELoss()
+        loss_fn = torch.nn.L1Loss()
 
     best_test_acc = 0
     best_test_r2_score = 0
@@ -291,40 +292,40 @@ def training_function(config=None):
 
 def build_args():
     parser = argparse.ArgumentParser(description='GNN for Organ Meshes')
-    parser.add_argument("--model", type=str, default="baseline")
-    parser.add_argument("--device", default='cuda')
+    parser.add_argument("--model", type=str, default="fsgnet")
+    parser.add_argument("--device", default="3")
     parser.add_argument("--max_epoch", type=int, default=50,
                         help="number of training epochs")
-    parser.add_argument("--enc_feats", type=int, default=128,
+    parser.add_argument("--enc_feats", type=int, default=64,
                         help="Encoder features")        
     parser.add_argument("--num_heads", type=int, default=12,
                         help="number of hidden attention heads")
 
-    parser.add_argument("--hidden_channels", type=int, default=512,
+    parser.add_argument("--hidden_channels", type=int, default=128,
                         help="Hidden dim of baseline")
 
-    parser.add_argument("--num_train_samples", type=int, default=3000,
+    parser.add_argument("--num_train_samples", type=int, default=20000,
                         help="Number of training samples")  
     parser.add_argument("--num_test_samples", type=int, default=300,
                             help="Number of training samples")                        
 
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--in_features", type=int, default=3)
     parser.add_argument("--num_classes", type=int, default=1)
-    parser.add_argument("--num_layers", type=int, default=3)
-    parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--num_layers", type=int, default=8)
+    parser.add_argument("--lr", type=float, default=0.09898505844932828)
 
     parser.add_argument("--layer", type=str, default="gcn")
     parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--use_input_encoder", type=bool, default=True)
     #parser.add_argument("--hparam_search", type=bool, default=False)
     parser.add_argument("--organ", type=str, default="liver")
-    parser.add_argument("--task", type=str, default="sex_prediction")
-    parser.add_argument("--use_registered_data", type=bool, default=False)
+    parser.add_argument("--task", type=str, default="age_prediction")
+    parser.add_argument("--use_registered_data", type=bool, default=True)
     parser.add_argument("--decimation_path", type=str, default="/data0/practical-wise2223/organ_mesh/organ_decimations_ply/")
     parser.add_argument("--registeration_path", type=str, default="/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/")
-    parser.add_argument("--split_path", type=str, default='/u/home/koksal/organ-mesh-registration-and-property-prediction/data/')
-    parser.add_argument("--root", type=str, default='/vol/chameleon/projects/mesh_gnn/organ_meshes')
+    parser.add_argument("--split_path", type=str, default='/u/home/wyo/organ-mesh-registration-and-property-prediction/data/')
+    parser.add_argument("--root", type=str, default='/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/')
     parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
     parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
     
