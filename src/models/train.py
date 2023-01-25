@@ -2,7 +2,7 @@ import sys
 import os
 import wandb
 
-sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
+sys.path.append('/u/home/wyo/organ-mesh-registration-and-property-prediction/')
 if os.getlogin() == 'koksal':
     sys.path.append('/home/koksal/organ-mesh-registration-and-property-prediction/')
 elif os.getlogin() == 'wyo':
@@ -29,8 +29,6 @@ def train(net, train_data, optimizer, loss_fn, device):
         data = data.to(device)
         optimizer.zero_grad()
         out = net(data)
-        print('Out shape ', out.shape)
-        print('data y shape', data.y.shape)
         loss = loss_fn(out.squeeze(1), data.y.float())
         loss.backward()
         cumulative_loss += loss.item()
@@ -82,7 +80,7 @@ def accuracy(predictions, gt_seg_labels):
     return float(correct_assignments / num_assignemnts)
 
 
-def evaluate_performance(dataset, net, device, configs, task='classification'):
+def evaluate_performance(dataset, net, configs, task='classification'):
     """Evaluate network performance on given dataset.
 
     Parameters
@@ -100,6 +98,7 @@ def evaluate_performance(dataset, net, device, configs, task='classification'):
         Mean accuracy of the network's prediction on
         the provided dataset.
     """
+    device = configs.device
     prediction_accuracies = []
     for data in dataset:
         data = data.to(device)
@@ -121,16 +120,16 @@ def evaluate_performance(dataset, net, device, configs, task='classification'):
 @torch.no_grad()
 def test_classification(net, train_data, test_data, configs):
     net.eval()
-    train_acc = evaluate_performance(train_data, net, configs.device)
-    test_acc = evaluate_performance(test_data, net, configs.device)
+    train_acc = evaluate_performance(train_data, net, configs)
+    test_acc = evaluate_performance(test_data, net, configs)
     return train_acc, test_acc
 
 
 @torch.no_grad()
 def test_regression(net, train_data, test_data, configs):
     net.eval()
-    train_score = evaluate_performance(train_data, net, configs.device, task='regression')
-    test_score = evaluate_performance(test_data, net, configs.device, task='regression')
+    train_score = evaluate_performance(train_data, net, configs, task='regression')
+    test_score = evaluate_performance(test_data, net, configs, task='regression')
     return train_score, test_score
 
 def build_optimizer(network, optimizer, learning_rate):
@@ -244,7 +243,7 @@ def training_function(config=None):
             wandb.log({'train_loss': train_loss, 'val_loss':val_loss, 'epoch': epoch})
             
             if config.task == 'sex_prediction':
-                train_acc, test_acc = test_classification(net, train_loader, test_loader, device)
+                train_acc, test_acc = test_classification(net, train_loader, test_loader, config)
                 wandb.log({'train_acc': train_acc, 'test_acc':test_acc, 'epoch': epoch})
 
                 tepochs.set_postfix(
@@ -257,7 +256,7 @@ def training_function(config=None):
 
 
             elif config.task == 'age_prediction':
-                train_r2_score, test_r2_score = test_regression(net, train_loader, test_loader, device)
+                train_r2_score, test_r2_score = test_regression(net, train_loader, test_loader, config)
                 wandb.log({'train_score': train_r2_score, 'test_score':test_r2_score, 'epoch': epoch})
 
                 tepochs.set_postfix(
@@ -274,7 +273,7 @@ def training_function(config=None):
                     best_test_acc = test_acc
                     wandb.run.summary["best_test_acc"] = 100 *best_test_acc
                     wandb.run.summary["best_train_acc"] = 100 * train_acc
-                    savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = '/u/home/wyo/organ-mesh-registration-and-property-prediction/models/'
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
