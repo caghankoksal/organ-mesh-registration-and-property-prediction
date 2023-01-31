@@ -7,9 +7,8 @@ import open3d as o3d
 
 
 class OrganMeshDataset(Dataset):
-    def __init__(self, root, basic_feats_path, bridge_path, split_path, decimation_path, registeration_path, mode='train', organ='liver', 
-                 num_samples = None, transform=None, pre_transform=None, pre_filter=None,
-                  pre_process=True, task="sex_prediction",  use_registered_data = True):
+    def __init__(self, config, mode='train', transform=None, pre_transform=None, pre_filter=None,
+                  pre_process=True):
         """ Pytorch Geometric Organ Mesh Dataset 
 
         Args:
@@ -25,33 +24,35 @@ class OrganMeshDataset(Dataset):
             pre_filter (_type_, optional): _description_. Defaults to None.
         """
     
-        super().__init__(root, transform, pre_transform, pre_filter)
+        super().__init__(config, transform, pre_transform, pre_filter)
         assert mode in ['train', 'val', 'test']
-        assert organ in ['left_kidney', 'liver', 'pancreas', 'right_kidney', 'spleen']
+        assert config.organ in ['left_kidney', 'liver', 'pancreas', 'right_kidney', 'spleen']
 
-        self.root = root
-        self.organ = organ
+        self.root = config.root
+        self.organ = config.organ
         self.pre_process = pre_process
-        self.task = task
-        self.use_registered_data = use_registered_data
-        self.decimation_path = decimation_path
-        self.registeration_path = registeration_path
+        self.task = config.task
+        self.use_registered_data = config.use_registered_data
+        self.decimation_path = config.decimation_path
+        self.registeration_path = config.registeration_path
   
-        split_path = os.path.join(split_path, f'organs_split_{mode}.txt')
+        split_path = os.path.join(config.split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
             self.organ_mesh_ids = f.readlines()
 
         self.organ_mesh_ids = [each.replace('\n','') for each in self.organ_mesh_ids]
+
+        num_samples = config.num_train_samples if mode == 'train' else config.num_test_samples
         if num_samples is not None:
             self.organ_mesh_ids = self.organ_mesh_ids[:num_samples]    
 
-        self.basic_feats_path = basic_feats_path 
-        self.bridge_path = bridge_path
+        self.basic_feat_path = config.basic_feat_path 
+        self.bridge_path = config.bridge_path
 
-        self.basic_features = pd.read_csv(basic_feats_path)
+        self.basic_features = pd.read_csv(config.basic_feat_path)
         new_names = {'21003-2.0':'age', '31-0.0':'sex', '21001-2.0':'bmi', '21002-2.0':'weight','50-2.0':'standing_weight'}
         self.basic_features = self.basic_features.rename(index=str, columns=new_names)
-        self.bridge_organ_df = pd.read_csv(bridge_path)
+        self.bridge_organ_df = pd.read_csv(config.bridge_path)
     
         if self.pre_process:
             self.patient_feats = {}
@@ -59,7 +60,7 @@ class OrganMeshDataset(Dataset):
                 cur_patient_features = self.basic_features[self.basic_features['eid'] == int(cur_patient)]
                 self.patient_feats[cur_patient] = cur_patient_features
     
-        print(f'{organ.capitalize()}  {mode} Dataset is created')
+        print(f'{self.organ.capitalize()}  {mode} Dataset is created')
     def len(self):
         return len(self.organ_mesh_ids)
 
@@ -102,7 +103,7 @@ class OrganMeshDataset(Dataset):
             data.y = int(gender_patient)
         elif self.task== 'age_prediction':
             gender_age = patient_features['age'].item()
-            data.y = int(gender_age)
+            data.y =  gender_age
         
         return data
     
