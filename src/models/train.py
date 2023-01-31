@@ -2,12 +2,13 @@ import sys
 import os
 import wandb
 
-sys.path.append('/u/home/wyo/organ-mesh-registration-and-property-prediction/')
-if os.getlogin() == 'koksal':
-    sys.path.append('/home/koksal/organ-mesh-registration-and-property-prediction/')
-elif os.getlogin() == 'wyo':
-    sys.path.append('/home/wyo/organ-mesh-registration-and-property-prediction/')
-elif os.getlogin() == 'manu':
+
+CUR_USER = os.getlogin()
+if CUR_USER == 'koksal':
+    sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
+elif CUR_USER == 'wyo':
+    sys.path.append('/u/home/wyo/organ-mesh-registration-and-property-prediction/')
+elif CUR_USER== 'manu':
     sys.path.append('FILL THIS WITH YOUR USERDIRECTORY NAME')
 
 import torch
@@ -273,7 +274,7 @@ def training_function(config=None):
                     best_test_acc = test_acc
                     wandb.run.summary["best_test_acc"] = 100 *best_test_acc
                     wandb.run.summary["best_train_acc"] = 100 * train_acc
-                    savedir = '/u/home/wyo/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
@@ -286,7 +287,7 @@ def training_function(config=None):
                     best_test_r2_score = test_r2_score
                     wandb.run.summary["best_test_acc"] = test_r2_score
                     wandb.run.summary["best_train_acc"] = train_r2_score
-                    savedir = '/u/home/koksal/organ-mesh-registration-and-property-prediction/models/'
+                    savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
                     savedir = os.path.join(savedir, str(wandb.run.name))
                     if  not os.path.exists(savedir):
                         os.makedirs(savedir)
@@ -335,9 +336,9 @@ def build_args():
     parser.add_argument("--use_registered_data", type=bool, default=True)
     parser.add_argument("--decimation_path", type=str, default="/data0/practical-wise2223/organ_mesh/organ_decimations_ply/")
     parser.add_argument("--registeration_path", type=str, default="/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/")
-    parser.add_argument("--split_path", type=str, default='/u/home/wyo/organ-mesh-registration-and-property-prediction/data/')
+    parser.add_argument("--split_path", type=str, default=f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/data/')
     parser.add_argument("--root", type=str, default='/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/')
-    parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
+    parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/normalized_basic_features.csv')
     parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
     parser.add_argument("--return_dataset", type=bool, default=False)
     parser.add_argument("--loss", type=str, default='mae')
@@ -374,8 +375,8 @@ if __name__ == '__main__':
    
     print('Usual training starts')
     run = wandb.init(
-    project="mesh_gnn_organ",
-    notes="tweak baseline",
+    project="mesh_gnn_organ_final",
+    notes="baseline",
     tags=[ "gnn"],
     config=args,
     )
