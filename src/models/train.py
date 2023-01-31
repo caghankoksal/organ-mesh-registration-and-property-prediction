@@ -222,9 +222,9 @@ def training_function(config=None):
     if config.task == 'sex_prediction':
         loss_fn = torch.nn.BCEWithLogitsLoss()
     elif config.task == 'age_prediction':
-        if config.loss_fn == 'mse':
+        if config.loss == 'mse':
             loss_fn = torch.nn.MSELoss()
-        elif config.loss_fn == 'mae':
+        elif config.loss == 'mae':
             loss_fn = torch.nn.L1Loss()
 
     best_test_acc = 0
@@ -301,15 +301,15 @@ def training_function(config=None):
 def build_args():
     parser = argparse.ArgumentParser(description='GNN for Organ Meshes')
     parser.add_argument("--model", type=str, default="baseline")
-    parser.add_argument("--device", default="3")
+    parser.add_argument("--device", default="6")
     parser.add_argument("--max_epoch", type=int, default=50,
                         help="number of training epochs")
-    parser.add_argument("--enc_feats", type=int, default=128,
+    parser.add_argument("--enc_feats", type=int, default=64,
                         help="Encoder features")        
     parser.add_argument("--num_heads", type=int, default=12,
                         help="number of hidden attention heads")
 
-    parser.add_argument("--hidden_channels", type=int, default=512,
+    parser.add_argument("--hidden_channels", type=int, default=128,
                         help="Hidden dim of baseline")
 
     parser.add_argument("--num_train_samples", type=int, default=3000,
@@ -358,7 +358,7 @@ if __name__ == '__main__':
    
     print('Usual training starts')
     run = wandb.init(
-    project="mesh_gnn_organ_final",
+    project="mesh_gnn_organ_presentation",
     notes="baseline",
     tags=[ "gnn"],
     config=args,

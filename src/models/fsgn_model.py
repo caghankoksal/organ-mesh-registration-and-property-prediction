@@ -266,17 +266,10 @@ class MeshSeg(torch.nn.Module):
         task = 'age_prediction'
     ):
 
-        """   
-        in_features=3,
-        encoder_features=128,
-        conv_channels=[32, 64, 128, 64],
-        encoder_channels=[128],
-        decoder_channels=[32],
-        num_classes=1,
-        num_heads=12,
-        apply_batch_norm=True
-        """
         super().__init__()
+
+        assert task in ['age_prediction', 'sex_prediction']
+        torch.manual_seed(12345)
 
         self.use_input_encoder = use_input_encoder
         self.use_scaled_age = use_scaled_age
