@@ -31,7 +31,7 @@ def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int,
 class GNN(torch.nn.Module):
     def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
                  use_input_encoder=True, encoder_features=128, apply_batch_norm=True,
-                 apply_dropout_every=True, task='sex_prediction'):
+                 apply_dropout_every=True, task='sex_prediction', use_scaled_age=False):
         super(GNN, self).__init__()
 
         assert task in ['age_classification', 'sex_prediction']
@@ -40,6 +40,7 @@ class GNN(torch.nn.Module):
         self.use_input_encoder = use_input_encoder
         self.apply_batch_norm = apply_batch_norm
         self.apply_dropout_every = apply_dropout_every
+        self.use_scaled_age = use_scaled_age
         if self.use_input_encoder :
             self.input_encoder = get_mlp_layers(
                 channels=[in_features, encoder_features],
@@ -91,5 +92,7 @@ class GNN(torch.nn.Module):
         # 3. Apply a final classifier
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.pred_layer(x)
+        if self.use_scaled_age or self.task =='sex_prediction':
+            x = torch.nn.Sigmoid()(x)
         
         return x

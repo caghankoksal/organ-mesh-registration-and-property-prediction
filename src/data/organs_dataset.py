@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from torch_geometric.data import Dataset, download_url, Data
 import open3d as o3d
-
+from sklearn.preprocessing import MinMaxScaler
 
 class OrganMeshDataset(Dataset):
     def __init__(self, config, mode='train', transform=None, pre_transform=None, pre_filter=None,
@@ -35,6 +35,7 @@ class OrganMeshDataset(Dataset):
         self.use_registered_data = config.use_registered_data
         self.decimation_path = config.decimation_path
         self.registeration_path = config.registeration_path
+        self.use_scaled_age = config.use_scaled_age
   
         split_path = os.path.join(config.split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
@@ -42,16 +43,24 @@ class OrganMeshDataset(Dataset):
 
         self.organ_mesh_ids = [each.replace('\n','') for each in self.organ_mesh_ids]
 
+        # Select number of samples according to the mode
         num_samples = config.num_train_samples if mode == 'train' else config.num_test_samples
         if num_samples is not None:
             self.organ_mesh_ids = self.organ_mesh_ids[:num_samples]    
 
-        self.basic_feat_path = config.basic_feat_path 
+         
         self.bridge_path = config.bridge_path
 
         self.basic_features = pd.read_csv(config.basic_feat_path)
         new_names = {'21003-2.0':'age', '31-0.0':'sex', '21001-2.0':'bmi', '21002-2.0':'weight','50-2.0':'standing_weight'}
         self.basic_features = self.basic_features.rename(index=str, columns=new_names)
+
+        # Scale Age
+        if config.use_scaled_age:
+            # Scale the age using MinMaxScaler() from sklearn
+            scaler = MinMaxScaler()
+            self.basic_features['age'] = scaler.fit_transform(self.basic_features['age'].values.reshape(-1,1))
+
         self.bridge_organ_df = pd.read_csv(config.bridge_path)
     
         if self.pre_process:
@@ -101,9 +110,12 @@ class OrganMeshDataset(Dataset):
             gender_patient = patient_features['sex'].item()
             #Label of the data is currently gender
             data.y = int(gender_patient)
-        elif self.task== 'age_prediction':
+        elif self.task == 'age_prediction':
             gender_age = patient_features['age'].item()
-            data.y =  gender_age
+            if self.use_scaled_age:
+                data.y =  gender_age
+            else:
+                data.y = int(gender_age)
         
         return data
     

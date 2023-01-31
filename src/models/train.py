@@ -155,7 +155,9 @@ def build_network(configs):
         encoder_channels=[configs.enc_feats],
         decoder_channels=[256],
         num_heads=configs.num_heads,
-        apply_batch_norm=True,  
+        apply_batch_norm=True,
+        use_scaled_age = configs.use_scaled_age,
+        task = configs.task,  
     ) 
 
         net = MeshSeg(**model_params)
@@ -171,7 +173,8 @@ def build_network(configs):
         hidden_channels=configs.hidden_channels,
         layer = configs.layer,
         num_layers = configs.num_layers,
-        )
+        use_scaled_age = configs.use_scaled_age,
+        task = configs.task,)
         net = GNN(**model_params)
 
     return net
@@ -201,7 +204,6 @@ def training_function(config=None):
     
     # note that we define values from `wandb.config` instead of 
     # defining hard values
-    #config = wandb.config
     print('Training function config ',config)
     device = config.device
     print('Current Device',device)
@@ -329,7 +331,7 @@ def build_args():
     parser.add_argument("--split_path", type=str, default=f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/data/')
     parser.add_argument("--root", type=str, default='/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/')
     parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
-    parser.add_argument("--use_normalized_age", type=bool, default=False)
+    parser.add_argument("--use_scaled_age", type=bool, default=False)
     parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
     parser.add_argument("--return_dataset", type=bool, default=False)
     parser.add_argument("--loss", type=str, default='mae')
