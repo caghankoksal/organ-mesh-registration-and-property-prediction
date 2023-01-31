@@ -222,7 +222,10 @@ def training_function(config=None):
     if config.task == 'sex_prediction':
         loss_fn = torch.nn.BCEWithLogitsLoss()
     elif config.task == 'age_prediction':
-        loss_fn = torch.nn.L1Loss()
+        if config.loss_fn == 'mse':
+            loss_fn = torch.nn.MSELoss()
+        elif config.loss_fn == 'mae':
+            loss_fn = torch.nn.L1Loss()
 
     best_test_acc = 0
     best_test_r2_score = 0
