@@ -7,7 +7,7 @@ CUR_USER = os.getlogin()
 if CUR_USER == 'koksal':
     sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
 elif CUR_USER == 'wyo':
-    sys.path.append('/u/home/wyo/organ-mesh-registration-and-property-prediction/')
+    sys.path.append('/u/home/wyo/final_integration/organ-mesh-registration-and-property-prediction/')
 elif CUR_USER== 'manu':
     sys.path.append('FILL THIS WITH YOUR USERDIRECTORY NAME')
 
@@ -129,13 +129,13 @@ def test_regression(net, train_data, test_data, configs):
     test_score = evaluate_performance(test_data, net, configs, task='regression')
     return train_score, test_score
 
-def build_optimizer(network, optimizer, learning_rate):
+def build_optimizer(network, optimizer, learning_rate, weight_decay):
     if optimizer == "sgd":
         optimizer = torch.optim.SGD(network.parameters(),
                               lr=learning_rate, momentum=0.9)
     elif optimizer == "adam":
         optimizer = torch.optim.Adam(network.parameters(),
-                               lr=learning_rate)
+                               lr=learning_rate, weight_decay=weight_decay)
     return optimizer
 
 
@@ -154,6 +154,7 @@ def build_network(configs):
         apply_batch_norm=True,
         use_scaled_age = configs.use_scaled_age,
         task = configs.task,  
+        dropout = configs.dropout
     ) 
 
         net = MeshSeg(**model_params)
@@ -170,7 +171,8 @@ def build_network(configs):
         layer = configs.layer,
         num_layers = configs.num_layers,
         use_scaled_age = configs.use_scaled_age,
-        task = configs.task,)
+        task = configs.task,
+        dropout = configs.dropout)
         net = GNN(**model_params)
 
     return net
@@ -207,7 +209,7 @@ def training_function(config=None):
     net = build_network(config).to(device)
     
     #Optimizer
-    optimizer = build_optimizer(net, config.optimizer, config.lr)
+    optimizer = build_optimizer(net, config.optimizer, config.lr, config.weight_decay)
 
     #Loss Function
     if config.task == 'sex_prediction':
@@ -267,18 +269,32 @@ def training_function(config=None):
                                 for k,v in config.items()} }, f"{savedir}/classification_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}.pth")
 
             elif config.task == 'age_prediction':
-                #Lower is better in regression
-                if test_score < best_test_score:
-                    best_test_score = test_score
-                    wandb.run.summary["best_test_score"] = test_score
-                    wandb.run.summary["best_train_score"] = train_score
-                    savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
-                    savedir = os.path.join(savedir, str(wandb.run.name))
-                    if  not os.path.exists(savedir):
-                        os.makedirs(savedir)
-                    torch.save({'model': deepcopy(net.state_dict()),  
-                                'config': {k:v
-                                for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
+                if config.eval_method == 'r2':
+                    if test_score > best_test_score:
+                        best_test_score = test_score
+                        wandb.run.summary["best_test_score"] = test_score
+                        wandb.run.summary["best_train_score"] = train_score
+                        savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
+                        savedir = os.path.join(savedir, str(wandb.run.name))
+                        if  not os.path.exists(savedir):
+                            os.makedirs(savedir)
+                        torch.save({'model': deepcopy(net.state_dict()),  
+                                    'config': {k:v
+                                    for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
+                
+                else:
+                    #Lower is better in regression
+                    if test_score < best_test_score:
+                        best_test_score = test_score
+                        wandb.run.summary["best_test_score"] = test_score
+                        wandb.run.summary["best_train_score"] = train_score
+                        savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
+                        savedir = os.path.join(savedir, str(wandb.run.name))
+                        if  not os.path.exists(savedir):
+                            os.makedirs(savedir)
+                        torch.save({'model': deepcopy(net.state_dict()),  
+                                    'config': {k:v
+                                    for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
 
     if config.task == 'sex_prediction':
         print('Best Test Accuracy is ',best_test_acc)
@@ -311,6 +327,8 @@ def build_args():
     parser.add_argument("--num_classes", type=int, default=1)
     parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--weight_decay", type=float, default=0.002)
+    parser.add_argument("--dropout", type=float, default=0.5)
 
     parser.add_argument("--layer", type=str, default="gcn")
     parser.add_argument("--optimizer", type=str, default="adam")
