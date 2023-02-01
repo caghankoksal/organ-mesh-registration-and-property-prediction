@@ -11,18 +11,26 @@ def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int,
                  gnn_layer, activation=nn.ReLU, normalization=None, dropout = None):
     """Creates GNN layers"""
     layers = nn.ModuleList()
-   
-    for i in range(n_layers):
-        # First GNN layer
-        if i == 0:
-            layer = gnn_layer(num_inp_features, hidden_channels)
-        else:
-            layer = gnn_layer(hidden_channels, hidden_channels)
-        
-        if normalization is not None:
-            norm_layer = normalization(hidden_channels)
 
-        layers += [layer, activation(), norm_layer ]
+    if gnn_layer == GATConv:
+        for i in range(n_layers):
+            if i == 0:
+                layers.append(gnn_layer(num_inp_features, hidden_channels))
+            else:
+                layers.append(gnn_layer(hidden_channels, 512))
+                layers.append(gnn_layer(512, 256))
+    else:    
+        for i in range(n_layers):
+            # First GNN layer
+            if i == 0:
+                layer = gnn_layer(num_inp_features, hidden_channels)
+            else:
+                layer = gnn_layer(hidden_channels, hidden_channels)
+
+            if normalization is not None:
+                norm_layer = normalization(hidden_channels)
+
+            layers += [layer, activation(), norm_layer ]
 
     return nn.ModuleList(layers)
 
@@ -60,9 +68,8 @@ class GNN(torch.nn.Module):
         elif layer == 'gat':
             self.layers = get_gnn_layers(num_layers, hidden_channels,in_features,
                                         gnn_layer=GATConv,activation=nn.ReLU,normalization=LayerNorm )
-            self.fc.append(Linear(hidden_channels, 128))
+            self.fc.append(Linear(256, 128))
             self.fc.append(Linear(128, 128))
-            self.fc.append(Linear(128, 64))
 
         #if apply_batch_norm:
         #    self.batch_layers = nn.ModuleList(
@@ -74,7 +81,7 @@ class GNN(torch.nn.Module):
             self.pred_layer = Linear(hidden_channels, num_classes)
         elif task == 'age_prediction':
             if layer == 'gat':
-                self.pred_layer = Linear(64, 1)
+                self.pred_layer = Linear(128, 1)
             else:    
                 self.pred_layer = Linear(hidden_channels, 1)
 
@@ -86,16 +93,21 @@ class GNN(torch.nn.Module):
         if self.use_input_encoder:
             x = self.input_encoder(x)
 
-        for i, layer in enumerate(self.layers):
-            # Each GCN consists 3 modules GCN -> Activation ->  Normalization 
-            # GCN send edge index
-            if i% 3 == 0:
-                x = layer(x, edge_index)
-            else:
-                x = layer(x)
+        if self.layer_type == 'gat':
+            for i in range(len(self.layers)):
+                x = self.layers[i](x, edge_index)
+                x = torch.tanh(x)
+        else:
+            for i, layer in enumerate(self.layers):
+                # Each GCN consists 3 modules GCN -> Activation ->  Normalization 
+                # GCN send edge index
+                if i% 3 == 0:
+                    x = layer(x, edge_index)
+                else:
+                    x = layer(x)
 
-            if self.apply_dropout_every:
-                x = F.dropout(x, p=0.5, training=self.training)
+                if self.apply_dropout_every:
+                    x = F.dropout(x, p=0.5, training=self.training)
                 
 
         # 2. Readout layer
