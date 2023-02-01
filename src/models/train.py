@@ -268,17 +268,31 @@ def training_function(config=None):
 
             elif config.task == 'age_prediction':
                 #Lower is better in regression
-                if test_score < best_test_score:
-                    best_test_score = test_score
-                    wandb.run.summary["best_test_score"] = test_score
-                    wandb.run.summary["best_train_score"] = train_score
-                    savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
-                    savedir = os.path.join(savedir, str(wandb.run.name))
-                    if  not os.path.exists(savedir):
-                        os.makedirs(savedir)
-                    torch.save({'model': deepcopy(net.state_dict()),  
-                                'config': {k:v
-                                for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
+                if config.eval_method == 'r2':
+                    if test_score > best_test_score:
+                        best_test_score = test_score
+                        wandb.run.summary["best_test_score"] = test_score
+                        wandb.run.summary["best_train_score"] = train_score
+                        savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
+                        savedir = os.path.join(savedir, str(wandb.run.name))
+                        if  not os.path.exists(savedir):
+                            os.makedirs(savedir)
+                        torch.save({'model': deepcopy(net.state_dict()),  
+                                    'config': {k:v
+                                    for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
+                
+                else:
+                    if test_score < best_test_score:
+                        best_test_score = test_score
+                        wandb.run.summary["best_test_score"] = test_score
+                        wandb.run.summary["best_train_score"] = train_score
+                        savedir = f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/models/'
+                        savedir = os.path.join(savedir, str(wandb.run.name))
+                        if  not os.path.exists(savedir):
+                            os.makedirs(savedir)
+                        torch.save({'model': deepcopy(net.state_dict()),  
+                                    'config': {k:v
+                                    for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
 
     if config.task == 'sex_prediction':
         print('Best Test Accuracy is ',best_test_acc)
