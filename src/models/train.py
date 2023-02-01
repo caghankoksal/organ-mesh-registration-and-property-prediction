@@ -52,32 +52,28 @@ def calculate_val_loss(net, val_data, loss_fn, device):
 
 
 
-def accuracy(predictions, gt_seg_labels):
+def accuracy(predictions, gt_class_labels):
     """Compute accuracy of predicted segmentation labels.
 
     Parameters
     ----------
     predictions: [|V|, num_classes]
-        Soft predictions of segmentation labels.
-    gt_seg_labels: [|V|]
-        Ground truth segmentations labels.
+        Soft predictions of sex prediction 
+    gt_class_labels: [|V|]
+        Ground truth sex labels.
     Returns
     -------
     float
         Accuracy of predicted segmentation labels.    
     """
-    #predicted_seg_labels = predictions.argmax(dim=-1, keepdim=True)
-   # print('Predictions', predictions.shape)
-    predicted_seg_labels = torch.nn.Sigmoid()(predictions)
-    #predicted_seg_labels[predicted_seg_labels>0.5] = 1
-    #predicted_seg_labels[predicted_seg_labels<0.5] = 0
-    predicted_seg_labels = torch.round(predicted_seg_labels)
-    #predicted_seg_labels = predictions.argmax(dim=-1, keepdim=True)
-    #print('predicted_seg_labels : ',predicted_seg_labels.shape)
-    if predicted_seg_labels.shape != gt_seg_labels.shape:
+    #
+    predicted_class_labels = torch.nn.Sigmoid()(predictions)
+    predicted_class_labels = torch.round(predicted_class_labels)
+    
+    if predicted_class_labels.shape != gt_class_labels.shape:
         raise ValueError("Expected Shapes to be equivalent")
-    correct_assignments = (predicted_seg_labels == gt_seg_labels).sum()
-    num_assignemnts = predicted_seg_labels.shape[0]
+    correct_assignments = (predicted_class_labels == gt_class_labels).sum()
+    num_assignemnts = predicted_class_labels.shape[0]
     return float(correct_assignments / num_assignemnts)
 
 
@@ -181,14 +177,10 @@ def build_network(configs):
 
 
 def build_dataset(config, return_dataset=False):
-        # Build Dataset
-
-
+    # Build Dataset
 
     train_dataset = OrganMeshDataset(config, mode='train')
-
     val_dataset = OrganMeshDataset(config, mode='val',)
-
     test_dataset = OrganMeshDataset(config, mode='test')
                                     
     train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True)
@@ -196,7 +188,6 @@ def build_dataset(config, return_dataset=False):
 
     if return_dataset:
         return train_dataset, val_dataset
-
     return train_loader, test_loader
 
 def training_function(config=None):
@@ -234,8 +225,6 @@ def training_function(config=None):
         for epoch in tepochs:
             train_loss = train(net, train_loader, optimizer, loss_fn, device)
             val_loss = calculate_val_loss(net, test_loader, loss_fn, device)
-            #mlflow.log_metric('train_loss',train_loss)
-            #mlflow.log_metric('val_loss',val_loss)
             wandb.log({'train_loss': train_loss, 'val_loss':val_loss, 'epoch': epoch})
             
             if config.task == 'sex_prediction':
@@ -347,15 +336,13 @@ def build_args():
 
 if __name__ == '__main__':
     args = build_args()
-    print('Args : ',args)
+    #print('Args : ',args)
 
     device = args.device #if args.device >= 0 else "cpu"
 
     if args.device != 'cuda' and args.device != 'cpu':
         device = int(args.device)
         
-
-   
     print('Usual training starts')
     run = wandb.init(
     project="mesh_gnn_organ_presentation",
