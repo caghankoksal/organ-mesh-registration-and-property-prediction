@@ -306,7 +306,7 @@ def build_args():
     parser.add_argument("--num_test_samples", type=int, default=300,
                             help="Number of training samples")                        
 
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--in_features", type=int, default=3)
     parser.add_argument("--num_classes", type=int, default=1)
     parser.add_argument("--num_layers", type=int, default=3)
@@ -347,7 +347,7 @@ if __name__ == '__main__':
     run = wandb.init(
     project="mesh_gnn_organ_presentation",
     notes="baseline",
-    tags=[ "gnn"],
+    tags=[args.model, args.organ, args.task, args.layer, f'enc_feats_{args.enc_feats}', f'heads_{args.num_heads}', f'hidden_channels_{args.hidden_channels}', f'num_layers_{args.num_layers}'],
     config=args,
     )
 
