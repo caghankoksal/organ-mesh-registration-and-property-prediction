@@ -39,7 +39,7 @@ def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int,
 class GNN(torch.nn.Module):
     def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
                  use_input_encoder=True, encoder_features=128, apply_batch_norm=True,
-                 apply_dropout_every=True, task='sex_prediction', use_scaled_age=False):
+                 apply_dropout_every=True, task='sex_prediction', use_scaled_age=False, dropout = 0):
         super(GNN, self).__init__()
 
         assert task in ['age_prediction', 'sex_prediction']
@@ -50,6 +50,7 @@ class GNN(torch.nn.Module):
         self.layer_type = layer
         self.use_input_encoder = use_input_encoder
         self.apply_batch_norm = apply_batch_norm
+        self.dropout = dropout
         self.apply_dropout_every = apply_dropout_every
         self.use_scaled_age = use_scaled_age
         if self.use_input_encoder :
@@ -107,20 +108,20 @@ class GNN(torch.nn.Module):
                     x = layer(x)
 
                 if self.apply_dropout_every:
-                    x = F.dropout(x, p=0.5, training=self.training)
+                    x = F.dropout(x, p=self.dropout, training=self.training)
                 
 
         # 2. Readout layer
         x = global_mean_pool(x, batch)  # [batch_size, hidden_channels]
 
         # 3. Apply a final classifier
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=self.dropout, training=self.training)
 
         if self.layer_type == 'gat':
             for i in range(len(self.fc)):
                x = self.fc[i](x)
                x = torch.tanh(x)
-               x = F.dropout(x, p=0.3, training=self.training)
+               x = F.dropout(x, p=self.dropout, training=self.training)
             x = self.pred_layer(x)
         else:
             x = self.pred_layer(x)

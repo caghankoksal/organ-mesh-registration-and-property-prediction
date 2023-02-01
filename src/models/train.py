@@ -129,13 +129,13 @@ def test_regression(net, train_data, test_data, configs):
     test_score = evaluate_performance(test_data, net, configs, task='regression')
     return train_score, test_score
 
-def build_optimizer(network, optimizer, learning_rate):
+def build_optimizer(network, optimizer, learning_rate, weight_decay):
     if optimizer == "sgd":
         optimizer = torch.optim.SGD(network.parameters(),
                               lr=learning_rate, momentum=0.9)
     elif optimizer == "adam":
         optimizer = torch.optim.Adam(network.parameters(),
-                               lr=learning_rate)
+                               lr=learning_rate, weight_decay=weight_decay)
     return optimizer
 
 
@@ -154,6 +154,7 @@ def build_network(configs):
         apply_batch_norm=True,
         use_scaled_age = configs.use_scaled_age,
         task = configs.task,  
+        dropout = configs.dropout
     ) 
 
         net = MeshSeg(**model_params)
@@ -170,7 +171,8 @@ def build_network(configs):
         layer = configs.layer,
         num_layers = configs.num_layers,
         use_scaled_age = configs.use_scaled_age,
-        task = configs.task,)
+        task = configs.task,
+        dropout = configs.dropout)
         net = GNN(**model_params)
 
     return net
@@ -207,7 +209,7 @@ def training_function(config=None):
     net = build_network(config).to(device)
     
     #Optimizer
-    optimizer = build_optimizer(net, config.optimizer, config.lr)
+    optimizer = build_optimizer(net, config.optimizer, config.lr, config.weight_decay)
 
     #Loss Function
     if config.task == 'sex_prediction':
@@ -325,6 +327,8 @@ def build_args():
     parser.add_argument("--num_classes", type=int, default=1)
     parser.add_argument("--num_layers", type=int, default=3)
     parser.add_argument("--lr", type=float, default=0.0001)
+    parser.add_argument("--weight_decay", type=float, default=0.002)
+    parser.add_argument("--dropout", type=float, default=0.5)
 
     parser.add_argument("--layer", type=str, default="gcn")
     parser.add_argument("--optimizer", type=str, default="adam")

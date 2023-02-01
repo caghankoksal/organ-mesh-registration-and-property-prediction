@@ -263,6 +263,7 @@ class MeshSeg(torch.nn.Module):
         apply_batch_norm=True,
         use_input_encoder=True,
         use_scaled_age=False,
+        dropout=0,
         task = 'age_prediction'
     ):
 
@@ -272,6 +273,7 @@ class MeshSeg(torch.nn.Module):
         torch.manual_seed(12345)
 
         self.use_input_encoder = use_input_encoder
+        self.dropout = dropout
         self.use_scaled_age = use_scaled_age
         self.task = task
         if self.use_input_encoder :
@@ -300,7 +302,7 @@ class MeshSeg(torch.nn.Module):
         x = self.gnn(x, edge_index)
         # Pool
         x = global_mean_pool(x,batch)
-        x = F.dropout(x, p=0.5, training=self.training)
+        x = F.dropout(x, p=self.dropout, training=self.training)
         x =  self.final_projection(x)
         if self.use_scaled_age or self.task =='sex_prediction':
             x = torch.nn.Sigmoid()(x)
