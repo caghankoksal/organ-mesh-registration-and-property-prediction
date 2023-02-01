@@ -7,7 +7,7 @@ CUR_USER = os.getlogin()
 if CUR_USER == 'koksal':
     sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
 elif CUR_USER == 'wyo':
-    sys.path.append('/u/home/wyo/organ-mesh-registration-and-property-prediction/')
+    sys.path.append('/u/home/wyo/final_integration/organ-mesh-registration-and-property-prediction/')
 elif CUR_USER== 'manu':
     sys.path.append('FILL THIS WITH YOUR USERDIRECTORY NAME')
 

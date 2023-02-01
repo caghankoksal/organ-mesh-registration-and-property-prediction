@@ -38,6 +38,7 @@ class GNN(torch.nn.Module):
         torch.manual_seed(12345)
         
         self.fc = torch.nn.ModuleList()
+        self.task = task
         self.layer_type = layer
         self.use_input_encoder = use_input_encoder
         self.apply_batch_norm = apply_batch_norm
@@ -104,14 +105,13 @@ class GNN(torch.nn.Module):
         x = F.dropout(x, p=0.5, training=self.training)
 
         if self.layer_type == 'gat':
-             for i in range(len(self.fc)):
-                x = self.fc[i](x)
-                x = torch.tanh(x)
-                x = F.dropout(x, p=0.3, training=self.training)
-                x = self.pred_layer(x)
+            for i in range(len(self.fc)):
+               x = self.fc[i](x)
+               x = torch.tanh(x)
+               x = F.dropout(x, p=0.3, training=self.training)
+            x = self.pred_layer(x)
         else:
             x = self.pred_layer(x)
-            
         if self.use_scaled_age or self.task =='sex_prediction':
             x = torch.nn.Sigmoid()(x)
         
