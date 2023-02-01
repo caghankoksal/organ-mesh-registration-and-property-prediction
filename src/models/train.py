@@ -267,7 +267,6 @@ def training_function(config=None):
                                 for k,v in config.items()} }, f"{savedir}/classification_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}.pth")
 
             elif config.task == 'age_prediction':
-                #Lower is better in regression
                 if config.eval_method == 'r2':
                     if test_score > best_test_score:
                         best_test_score = test_score
@@ -282,6 +281,7 @@ def training_function(config=None):
                                     for k,v in config.items()} }, f"{savedir}/regression_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testr2_{round(best_test_score,2)}.pth")
                 
                 else:
+                    #Lower is better in regression
                     if test_score < best_test_score:
                         best_test_score = test_score
                         wandb.run.summary["best_test_score"] = test_score

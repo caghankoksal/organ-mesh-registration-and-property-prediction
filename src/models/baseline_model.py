@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, SAGEConv, LayerNorm, Linear
+from torch_geometric.nn import GCNConv, SAGEConv, GATConv, LayerNorm, Linear
 from torch_geometric.nn import global_mean_pool
 from src.models.fsgn_model import get_mlp_layers
 
@@ -37,6 +37,8 @@ class GNN(torch.nn.Module):
         assert task in ['age_prediction', 'sex_prediction']
         torch.manual_seed(12345)
         
+        self.fc = torch.nn.ModuleList()
+        self.layer_type = layer
         self.use_input_encoder = use_input_encoder
         self.apply_batch_norm = apply_batch_norm
         self.apply_dropout_every = apply_dropout_every
@@ -54,6 +56,12 @@ class GNN(torch.nn.Module):
         elif layer == 'sageconv':
             self.layers = get_gnn_layers(num_layers, hidden_channels,in_features,
                                         gnn_layer=SAGEConv,activation=nn.ReLU,normalization=LayerNorm )
+        elif layer == 'gat':
+            self.layers = get_gnn_layers(num_layers, hidden_channels,in_features,
+                                        gnn_layer=GATConv,activation=nn.ReLU,normalization=LayerNorm )
+            self.fc.append(Linear(hidden_channels, 128))
+            self.fc.append(Linear(128, 128))
+            self.fc.append(Linear(128, 64))
 
         #if apply_batch_norm:
         #    self.batch_layers = nn.ModuleList(
@@ -64,7 +72,10 @@ class GNN(torch.nn.Module):
         if task == 'sex_prediction':
             self.pred_layer = Linear(hidden_channels, num_classes)
         elif task == 'age_prediction':
-            self.pred_layer = Linear(hidden_channels, 1)
+            if layer == 'gat':
+                self.pred_layer = Linear(64, 1)
+            else:    
+                self.pred_layer = Linear(hidden_channels, 1)
 
 
 
@@ -91,7 +102,16 @@ class GNN(torch.nn.Module):
 
         # 3. Apply a final classifier
         x = F.dropout(x, p=0.5, training=self.training)
-        x = self.pred_layer(x)
+
+        if self.layer_type == 'gat':
+             for i in range(len(self.fc)):
+                x = self.fc[i](x)
+                x = torch.tanh(x)
+                x = F.dropout(x, p=0.3, training=self.training)
+                x = self.pred_layer(x)
+        else:
+            x = self.pred_layer(x)
+            
         if self.use_scaled_age or self.task =='sex_prediction':
             x = torch.nn.Sigmoid()(x)
         
