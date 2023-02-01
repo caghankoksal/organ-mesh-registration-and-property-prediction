@@ -13,6 +13,7 @@ elif CUR_USER== 'manu':
 
 import torch
 from src.models.fsgn_model import MeshSeg
+from src.models.point_transformer_block import PointTransformerLayer
 from src.data.organs_dataset import OrganMeshDataset
 from torch_geometric.data import DataLoader
 from tqdm import tqdm
@@ -174,6 +175,16 @@ def build_network(configs):
         task = configs.task,
         dropout = configs.dropout)
         net = GNN(**model_params)
+
+    elif configs.model=='pt':
+        
+        print('pt Model is initialized')
+        model_params = dict(
+        dim = configs.enc_feats,
+        pos_mlp_hidden_dim = 64,
+        attn_mlp_hidden_mult = 4,
+        num_neighbors = 3,)
+        net = PointTransformerLayer(**model_params)
 
     return net
 
