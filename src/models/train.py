@@ -320,7 +320,7 @@ def build_args():
     parser.add_argument("--num_heads", type=int, default=12,
                         help="number of hidden attention heads")
 
-    parser.add_argument("--hidden_channels", nargs='+', type = int, default=[256, 256, 256, 256, 256],
+    parser.add_argument("--hidden_channels", nargs='+', type = int, default=[512, 512, 256, 256, 128, 64, 1],
                         help="Hidden dim of baseline")
 
     parser.add_argument("--num_train_samples", type=int, default=3000,

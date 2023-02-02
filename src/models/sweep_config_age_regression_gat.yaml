@@ -6,30 +6,28 @@ metric:
 parameters:
   use_registered_data:
     values:
-      - "true"
-      - "false"
+      - "True"
+      - "False"
     distribution: categorical
   norm:
     values:
-      - "true"
-      - "false"
+      - "True"
+      - "False"
     distribution: categorical
   use_input_encoder:
     values:
-      - "true"
+      - "True"
     distribution: categorical
   num_train_samples: 
     value: 3000
   num_test_samples: 
     value: 300
-  hidden_channels:
-    - [512, 512, 256, 256, 128, 64, 1]
   dropout:
     values: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
   use_scaled_age:
     values:
-      - "true"
-      - "false"
+      - "True"
+      - "False"
     distribution: categorical
   eval_method:
     values:
@@ -75,6 +73,6 @@ parameters:
     min: 1e-6
     distribution: log_uniform_values
   weight_decay:
-    max: 0
+    max: 1e-2
     min: 1e-6
     distribution: log_uniform_values
