@@ -256,6 +256,7 @@ class MeshSeg(torch.nn.Module):
         in_features,
         encoder_features,
         conv_channels,
+        activationf,
         encoder_channels,
         decoder_channels,
         num_classes,
@@ -279,7 +280,7 @@ class MeshSeg(torch.nn.Module):
         if self.use_input_encoder :
             self.input_encoder = get_mlp_layers(
                 channels=[in_features] + encoder_channels,
-                activation=nn.ELU,
+                activation=activationf,
             )
         self.gnn = GraphFeatureEncoder(
             in_features=encoder_features,
@@ -291,7 +292,7 @@ class MeshSeg(torch.nn.Module):
 
         self.final_projection = get_mlp_layers(
             [final_conv_channel] + decoder_channels + [num_classes],
-            activation=nn.ELU,
+            activation=activationf,
         )
 
     def forward(self, data):

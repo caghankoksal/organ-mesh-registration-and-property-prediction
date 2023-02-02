@@ -2,42 +2,34 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, SAGEConv, GATConv, LayerNorm, Linear
-from torch_geometric.nn import global_mean_pool
+from torch_geometric.nn import global_mean_pool, global_max_pool
 from src.models.fsgn_model import get_mlp_layers
 
 
 
-def get_gnn_layers(n_layers: int, hidden_channels: int, num_inp_features:int, 
+def get_gnn_layers(num_conv_layers: int, hidden_channels, num_inp_features:int, 
                  gnn_layer, activation=nn.ReLU, normalization=None, dropout = None):
     """Creates GNN layers"""
     layers = nn.ModuleList()
 
-    if gnn_layer == GATConv:
-        for i in range(n_layers):
-            if i == 0:
-                layers.append(gnn_layer(num_inp_features, hidden_channels))
-            else:
-                layers.append(gnn_layer(hidden_channels, 512))
-                layers.append(gnn_layer(512, 256))
-    else:    
-        for i in range(n_layers):
-            # First GNN layer
-            if i == 0:
-                layer = gnn_layer(num_inp_features, hidden_channels)
-            else:
-                layer = gnn_layer(hidden_channels, hidden_channels)
-
+    for i in range(num_conv_layers):
+        if i == 0:
+            layers.append(gnn_layer(num_inp_features, hidden_channels[i]))
+            layers.append(activation())
             if normalization is not None:
-                norm_layer = normalization(hidden_channels)
-
-            layers += [layer, activation(), norm_layer ]
+                layers.append(normalization(hidden_channels[i]))
+        else:
+            layers.append(gnn_layer(hidden_channels[i-1], hidden_channels[i]))
+            layers.append(activation())
+            if normalization is not None:
+                layers.append(normalization(hidden_channels[i]))
 
     return nn.ModuleList(layers)
 
 
 
 class GNN(torch.nn.Module):
-    def __init__(self, in_features, num_classes, hidden_channels, num_layers=3, layer='gcn',
+    def __init__(self, in_features, num_classes, hidden_channels, activation, normalization, num_conv_layers=3, layer='gcn',
                  use_input_encoder=True, encoder_features=128, apply_batch_norm=True,
                  apply_dropout_every=True, task='sex_prediction', use_scaled_age=False, dropout = 0):
         super(GNN, self).__init__()
@@ -51,8 +43,16 @@ class GNN(torch.nn.Module):
         self.use_input_encoder = use_input_encoder
         self.apply_batch_norm = apply_batch_norm
         self.dropout = dropout
+        self.normalization_bool = normalization
+        self.activation = activation
         self.apply_dropout_every = apply_dropout_every
         self.use_scaled_age = use_scaled_age
+
+        if self.normalization_bool:
+            self.normalization = LayerNorm
+        else:
+            self.normalization = None
+
         if self.use_input_encoder :
             self.input_encoder = get_mlp_layers(
                 channels=[in_features, encoder_features],
@@ -61,32 +61,34 @@ class GNN(torch.nn.Module):
             in_features = encoder_features
 
         if layer == 'gcn':
-            self.layers = get_gnn_layers(num_layers, hidden_channels, num_inp_features=in_features,
-                                        gnn_layer=GCNConv,activation=nn.ReLU,normalization=LayerNorm )
+            self.layers = get_gnn_layers(num_conv_layers, hidden_channels, num_inp_features=in_features,
+                                        gnn_layer=GCNConv,activation=activation,normalization=self.normalization )
         elif layer == 'sageconv':
-            self.layers = get_gnn_layers(num_layers, hidden_channels,in_features,
-                                        gnn_layer=SAGEConv,activation=nn.ReLU,normalization=LayerNorm )
+            self.layers = get_gnn_layers(num_conv_layers, hidden_channels,in_features,
+                                        gnn_layer=SAGEConv,activation=activation,normalization=self.normalization )
         elif layer == 'gat':
-            self.layers = get_gnn_layers(num_layers, hidden_channels,in_features,
-                                        gnn_layer=GATConv,activation=nn.ReLU,normalization=LayerNorm )
-            self.fc.append(Linear(256, 128))
-            self.fc.append(Linear(128, 128))
+            self.layers = get_gnn_layers(num_conv_layers, hidden_channels,in_features,
+                                        gnn_layer=GATConv,activation=activation,normalization=self.normalization )
+        
+        for i in range((len(hidden_channels)-num_conv_layers)):
+            self.fc.append(Linear(hidden_channels[i+num_conv_layers-1], hidden_channels[i+num_conv_layers]))
+
+            
 
         #if apply_batch_norm:
         #    self.batch_layers = nn.ModuleList(
-        #        [nn.BatchNorm1d(hidden_channels) for i in range(num_layers)]
+        #        [nn.BatchNorm1d(hidden_channels) for i in range(num_conv_layers)]
         #    )
 
 
         if task == 'sex_prediction':
-            self.pred_layer = Linear(hidden_channels, num_classes)
+            self.pred_layer = Linear(hidden_channels[len(hidden_channels)], num_classes)
         elif task == 'age_prediction':
-            if layer == 'gat':
-                self.pred_layer = Linear(128, 1)
-            else:    
-                self.pred_layer = Linear(hidden_channels, 1)
+            self.pred_layer = Linear(hidden_channels[len(hidden_channels)-1], 1)
 
-
+        print(self.layers)
+        print(self.fc)
+        print(self.pred_layer)
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -94,10 +96,17 @@ class GNN(torch.nn.Module):
         if self.use_input_encoder:
             x = self.input_encoder(x)
 
-        if self.layer_type == 'gat':
-            for i in range(len(self.layers)):
-                x = self.layers[i](x, edge_index)
-                x = torch.tanh(x)
+        if self.normalization is None:
+            for i, layer in enumerate(self.layers):
+                # Each GCN consists 2 modules GCN -> Activation 
+                # GCN send edge index
+                if i% 2 == 0:
+                    x = layer(x, edge_index)
+                else:
+                    x = layer(x)
+
+                if self.apply_dropout_every:
+                    x = F.dropout(x, p=self.dropout, training=self.training)
         else:
             for i, layer in enumerate(self.layers):
                 # Each GCN consists 3 modules GCN -> Activation ->  Normalization 
@@ -112,19 +121,18 @@ class GNN(torch.nn.Module):
                 
 
         # 2. Readout layer
-        x = global_mean_pool(x, batch)  # [batch_size, hidden_channels]
+        x = global_max_pool(x, batch)  # [batch_size, hidden_channels]
 
         # 3. Apply a final classifier
         x = F.dropout(x, p=self.dropout, training=self.training)
 
-        if self.layer_type == 'gat':
-            for i in range(len(self.fc)):
-               x = self.fc[i](x)
-               x = torch.tanh(x)
-               x = F.dropout(x, p=self.dropout, training=self.training)
-            x = self.pred_layer(x)
-        else:
-            x = self.pred_layer(x)
+       
+        for i in range(len(self.fc)):
+           x = self.fc[i](x)
+           x = torch.tanh(x)
+           x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.pred_layer(x)
+
         if self.use_scaled_age or self.task =='sex_prediction':
             x = torch.nn.Sigmoid()(x)
         

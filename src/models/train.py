@@ -1,5 +1,6 @@
 import sys
 import os
+import ast
 import wandb
 
 
@@ -12,6 +13,7 @@ elif CUR_USER== 'manu':
     sys.path.append('FILL THIS WITH YOUR USERDIRECTORY NAME')
 
 import torch
+from torch import nn
 from src.models.fsgn_model import MeshSeg
 from src.data.organs_dataset import OrganMeshDataset
 from torch_geometric.data import DataLoader
@@ -140,6 +142,7 @@ def build_optimizer(network, optimizer, learning_rate, weight_decay):
 
 
 def build_network(configs):
+    activation = getattr(nn, configs.activation)
     if configs.model=='fsgnet':
 
         model_params = dict(
@@ -147,11 +150,12 @@ def build_network(configs):
         num_classes=configs.num_classes,
         in_features=configs.in_features, 
         encoder_features=configs.enc_feats,
-        conv_channels=[256, 256, 256, 256],
+        conv_channels=configs.hidden_channels,
+        activationf=activation,
         encoder_channels=[configs.enc_feats],
         decoder_channels=[256],
         num_heads=configs.num_heads,
-        apply_batch_norm=True,
+        apply_batch_norm=configs.norm,
         use_scaled_age = configs.use_scaled_age,
         task = configs.task,  
         dropout = configs.dropout
@@ -167,9 +171,11 @@ def build_network(configs):
         num_classes=configs.num_classes,
         in_features=configs.in_features, 
         encoder_features = configs.enc_feats,
-        hidden_channels=configs.hidden_channels,
+        hidden_channels= configs.hidden_channels,
+        activation=activation,
+        normalization = configs.norm,
         layer = configs.layer,
-        num_layers = configs.num_layers,
+        num_conv_layers = configs.num_conv_layers,
         use_scaled_age = configs.use_scaled_age,
         task = configs.task,
         dropout = configs.dropout)
@@ -306,7 +312,7 @@ def training_function(config=None):
 def build_args():
     parser = argparse.ArgumentParser(description='GNN for Organ Meshes')
     parser.add_argument("--model", type=str, default="baseline")
-    parser.add_argument("--device", default="6")
+    parser.add_argument("--device", type=int, default=6)
     parser.add_argument("--max_epoch", type=int, default=50,
                         help="number of training epochs")
     parser.add_argument("--enc_feats", type=int, default=64,
@@ -314,7 +320,7 @@ def build_args():
     parser.add_argument("--num_heads", type=int, default=12,
                         help="number of hidden attention heads")
 
-    parser.add_argument("--hidden_channels", type=int, default=128,
+    parser.add_argument("--hidden_channels", nargs='+', type = int, default=[256, 256, 256, 256, 256],
                         help="Hidden dim of baseline")
 
     parser.add_argument("--num_train_samples", type=int, default=3000,
@@ -325,26 +331,28 @@ def build_args():
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--in_features", type=int, default=3)
     parser.add_argument("--num_classes", type=int, default=1)
-    parser.add_argument("--num_layers", type=int, default=3)
+    parser.add_argument("--num_conv_layers", type=int, default=3)
     parser.add_argument("--lr", type=float, default=0.0001)
     parser.add_argument("--weight_decay", type=float, default=0.002)
     parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--activation", type=str, default="ReLU")
+    parser.add_argument("--norm", type=ast.literal_eval, default=True)
 
     parser.add_argument("--layer", type=str, default="gcn")
     parser.add_argument("--optimizer", type=str, default="adam")
-    parser.add_argument("--use_input_encoder", type=bool, default=True)
+    parser.add_argument("--use_input_encoder", type=ast.literal_eval, default=True)
     #parser.add_argument("--hparam_search", type=bool, default=False)
     parser.add_argument("--organ", type=str, default="liver")
     parser.add_argument("--task", type=str, default="sex_prediction")
-    parser.add_argument("--use_registered_data", type=bool, default=True)
+    parser.add_argument("--use_registered_data", type=ast.literal_eval, default=True)
     parser.add_argument("--decimation_path", type=str, default="/data0/practical-wise2223/organ_mesh/organ_decimations_ply/")
     parser.add_argument("--registeration_path", type=str, default="/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/")
     parser.add_argument("--split_path", type=str, default=f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/data/')
-    parser.add_argument("--root", type=str, default='/data0/practical-wise2223/organ_mesh/gendered_organ_registrations_ply/')
+    parser.add_argument("--root", type=str, default='/vol/chameleon/projects/mesh_gnn/organ_meshes')
     parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
-    parser.add_argument("--use_scaled_age", type=bool, default=False)
+    parser.add_argument("--use_scaled_age", type=ast.literal_eval, default=False)
     parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
-    parser.add_argument("--return_dataset", type=bool, default=False)
+    parser.add_argument("--return_dataset", type=ast.literal_eval, default=False)
     parser.add_argument("--loss", type=str, default='mae')
     parser.add_argument("--eval_method", type=str, default='mae')
     
@@ -365,7 +373,7 @@ if __name__ == '__main__':
     run = wandb.init(
     project="mesh_gnn_organ_presentation",
     notes="baseline",
-    tags=[args.model, args.organ, args.task, args.layer, f'enc_feats_{args.enc_feats}', f'heads_{args.num_heads}', f'hidden_channels_{args.hidden_channels}', f'num_layers_{args.num_layers}'],
+    tags=[args.model, args.organ, args.task, args.layer, f'enc_feats_{args.enc_feats}', f'heads_{args.num_heads}', f'hidden_channels_{args.hidden_channels}', f'num_layers_{args.num_conv_layers}'],
     config=args,
     )
 
