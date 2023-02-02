@@ -86,9 +86,9 @@ class GNN(torch.nn.Module):
         elif task == 'age_prediction':
             self.pred_layer = Linear(hidden_channels[len(hidden_channels)-1], 1)
 
-        print(self.layers)
-        print(self.fc)
-        print(self.pred_layer)
+        # print(self.layers)
+        # print(self.fc)
+        # print(self.pred_layer)
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
