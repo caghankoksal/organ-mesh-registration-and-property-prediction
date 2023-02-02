@@ -6,17 +6,17 @@ metric:
 parameters:
   use_registered_data:
     values:
-      - "True"
-      - "False"
+      - True
+      - False
     distribution: categorical
   norm:
     values:
-      - "True"
-      - "False"
+      - True
+      - False
     distribution: categorical
   use_input_encoder:
     values:
-      - "True"
+      - True
     distribution: categorical
   num_train_samples: 
     value: 3000
@@ -26,8 +26,8 @@ parameters:
     values: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
   use_scaled_age:
     values:
-      - "True"
-      - "False"
+      - True
+      - False
     distribution: categorical
   eval_method:
     values:
