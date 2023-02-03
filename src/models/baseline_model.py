@@ -82,7 +82,7 @@ class GNN(torch.nn.Module):
 
 
         if task == 'sex_prediction':
-            self.pred_layer = Linear(hidden_channels[len(hidden_channels)], num_classes)
+            self.pred_layer = Linear(hidden_channels[len(hidden_channels)-1], num_classes)
         elif task == 'age_prediction':
             self.pred_layer = Linear(hidden_channels[len(hidden_channels)-1], 1)
 
