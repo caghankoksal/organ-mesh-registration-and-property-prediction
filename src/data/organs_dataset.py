@@ -97,7 +97,7 @@ class OrganMeshDataset(Dataset):
             data = Data(x=registered_mesh[0][0], edge_index=registered_mesh[0][1], y=registered_mesh[0][2], num_nodes= len(registered_mesh[0][0]), eid=registered_mesh[0][3])
         else:
             data = torch.load(os.path.join(self.root, selected_patient,f'{self.organ}_mesh.pt'))
-    
+            
         #old_id = data['eid']
         #new_id = selected_patient
         # This might be bottleneck @TODO
@@ -116,6 +116,5 @@ class OrganMeshDataset(Dataset):
                 data.y =  gender_age
             else:
                 data.y = int(gender_age)
-        
         return data
     
