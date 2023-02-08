@@ -48,11 +48,14 @@ class OrganMeshDataset(Dataset):
         if num_samples is not None:
             self.organ_mesh_ids = self.organ_mesh_ids[:num_samples]    
 
+        # Training samples are created with os.listrdir ( registered patient files)
+        # Some of the registered patients do not have bmi features so they are nan.
+        # Looks like nan values are not removed from the listdir()
          
         self.bridge_path = config.bridge_path
 
         self.basic_features = pd.read_csv(config.basic_feat_path)
-        new_names = {'21003-2.0':'age', '31-0.0':'sex', '21001-2.0':'bmi', '21002-2.0':'weight','50-2.0':'standing_weight'}
+        new_names = {'21003-2.0':'age', '31-0.0':'sex', '21001-2.0':'bmi', '21002-2.0':'weight','50-2.0':'standing_height'}
         self.basic_features = self.basic_features.rename(index=str, columns=new_names)
 
         # Scale Age
@@ -60,6 +63,9 @@ class OrganMeshDataset(Dataset):
             # Scale the age using MinMaxScaler() from sklearn
             scaler = MinMaxScaler()
             self.basic_features['age'] = scaler.fit_transform(self.basic_features['age'].values.reshape(-1,1))
+            self.basic_features['bmi'] = scaler.fit_transform(self.basic_features['bmi'].values.reshape(-1,1))
+            self.basic_features['weight'] = scaler.fit_transform(self.basic_features['weight'].values.reshape(-1,1))
+            self.basic_features['standing_height'] = scaler.fit_transform(self.basic_features['standing_height'].values.reshape(-1,1))
 
         self.bridge_organ_df = pd.read_csv(config.bridge_path)
     
@@ -118,8 +124,22 @@ class OrganMeshDataset(Dataset):
                 data.y = int(gender_age)
         elif self.task == 'bmi_prediction':
             bmi = patient_features['bmi'].item()
-            
+            if self.use_scaled_data:
+                data.y =  bmi
+            else:
+                data.y = int(bmi)
+        elif self.task == 'weight_prediction':
+            weight = patient_features['weight'].item()
+            if self.use_scaled_data:
+                data.y =  weight
+            else:
+                data.y = int(weight)
+        elif self.task == 'height_prediction':
+            height = patient_features['standing_height'].item()
+            if self.use_scaled_data:
+                data.y =  height
+            else:
+                data.y = int(height)
         
-
         return data
     
