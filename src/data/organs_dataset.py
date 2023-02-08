@@ -35,7 +35,7 @@ class OrganMeshDataset(Dataset):
         self.use_registered_data = config.use_registered_data
         self.decimation_path = config.decimation_path
         self.registeration_path = config.registeration_path
-        self.use_scaled_age = config.use_scaled_age
+        self.use_scaled_data = config.use_scaled_data
   
         split_path = os.path.join(config.split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
@@ -56,7 +56,7 @@ class OrganMeshDataset(Dataset):
         self.basic_features = self.basic_features.rename(index=str, columns=new_names)
 
         # Scale Age
-        if config.use_scaled_age:
+        if config.use_scaled_data:
             # Scale the age using MinMaxScaler() from sklearn
             scaler = MinMaxScaler()
             self.basic_features['age'] = scaler.fit_transform(self.basic_features['age'].values.reshape(-1,1))
@@ -112,9 +112,14 @@ class OrganMeshDataset(Dataset):
             data.y = int(gender_patient)
         elif self.task == 'age_prediction':
             gender_age = patient_features['age'].item()
-            if self.use_scaled_age:
+            if self.use_scaled_data:
                 data.y =  gender_age
             else:
                 data.y = int(gender_age)
+        elif self.task == 'bmi_prediction':
+            bmi = patient_features['bmi'].item()
+            
+        
+
         return data
     

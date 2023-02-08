@@ -22,7 +22,7 @@ parameters:
     max: 512
     min: 64
     distribution: int_uniform
-  use_scaled_age:
+  use_scaled_data:
     values:
       - "true"
       - "false"

@@ -156,7 +156,7 @@ def build_network(configs):
         decoder_channels=[256],
         num_heads=configs.num_heads,
         apply_batch_norm=configs.norm,
-        use_scaled_age = configs.use_scaled_age,
+        use_scaled_data = configs.use_scaled_data,
         task = configs.task,  
         dropout = configs.dropout
     ) 
@@ -176,7 +176,7 @@ def build_network(configs):
         normalization = configs.norm,
         layer = configs.layer,
         num_conv_layers = configs.num_conv_layers,
-        use_scaled_age = configs.use_scaled_age,
+        use_scaled_data = configs.use_scaled_data,
         task = configs.task,
         dropout = configs.dropout)
         net = GNN(**model_params)
@@ -350,7 +350,7 @@ def build_args():
     parser.add_argument("--split_path", type=str, default=f'/u/home/{CUR_USER}/organ-mesh-registration-and-property-prediction/data/')
     parser.add_argument("--root", type=str, default='/vol/chameleon/projects/mesh_gnn/organ_meshes')
     parser.add_argument("--basic_feat_path", type=str, default='/vol/chameleon/projects/mesh_gnn/basic_features.csv')
-    parser.add_argument("--use_scaled_age", type=ast.literal_eval, default=False)
+    parser.add_argument("--use_scaled_data", type=ast.literal_eval, default=False)
     parser.add_argument("--bridge_path", type=str, default='/vol/chameleon/projects/mesh_gnn/Bridge_eids_60520_87802.csv')
     parser.add_argument("--return_dataset", type=ast.literal_eval, default=False)
     parser.add_argument("--loss", type=str, default='mae')
