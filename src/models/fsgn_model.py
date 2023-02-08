@@ -270,7 +270,7 @@ class MeshSeg(torch.nn.Module):
 
         super().__init__()
 
-        assert task in ['age_prediction', 'sex_prediction']
+        assert task in ['age_prediction', 'sex_prediction',  'weight_prediction', 'standing_height_prediction', 'bmi_prediction']
         torch.manual_seed(12345)
 
         self.use_input_encoder = use_input_encoder

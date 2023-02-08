@@ -16,3 +16,11 @@ src/models/train_all_organs_sex_prediction.sh
 src/models/baseline_normalized_age_registered_3000_enc_feats_64.sh
 src/models/__pycache__/train.cpython-39.pyc
 environment_droplet.yml
+src/models/__pycache__/__init__.cpython-38.pyc
+src/models/__pycache__/baseline_model.cpython-38.pyc
+src/models/__pycache__/fsgn_model.cpython-38.pyc
+src/data/__pycache__/organs_dataset.cpython-38.pyc
+src/data/__pycache__/__init__.cpython-38.pyc
+src/__pycache__/__init__.cpython-38.pyc
+src/models/__pycache__/fsgn_model.cpython-38.pyc
+src/models/__pycache__/__init__.cpython-38.pyc

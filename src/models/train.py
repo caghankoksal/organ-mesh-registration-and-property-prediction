@@ -32,7 +32,9 @@ def train(net, train_data, optimizer, loss_fn, device):
         data = data.to(device)
         optimizer.zero_grad()
         out = net(data)
+        print('Out shape ', out.shape, 'out value : ',out, 'data y shape', data.y.shape, 'data y value : ', data.y)
         loss = loss_fn(out.squeeze(1), data.y.float())
+        print('Loss value : ', loss)
         loss.backward()
         cumulative_loss += loss.item()
         optimizer.step()
@@ -220,7 +222,7 @@ def training_function(config=None):
     #Loss Function
     if config.task == 'sex_prediction':
         loss_fn = torch.nn.BCEWithLogitsLoss()
-    elif config.task == 'age_prediction':
+    else:
         if config.loss == 'mse':
             loss_fn = torch.nn.MSELoss()
         elif config.loss == 'mae':
@@ -247,8 +249,8 @@ def training_function(config=None):
                 )
                 sleep(0.1)
 
-
-            elif config.task == 'age_prediction':
+            # Regression Task: BMI prediction, Age prediction, Height prediction, Weight prediction
+            else:
                 train_score, test_score = test_regression(net, train_loader, test_loader, config)
                 wandb.log({'train_score': train_score, 'test_score':test_score, 'epoch': epoch})
 
@@ -274,7 +276,7 @@ def training_function(config=None):
                                 'config': {k:v
                                 for k,v in config.items()} }, f"{savedir}/classification_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}.pth")
 
-            elif config.task == 'age_prediction':
+            else:
                 if config.eval_method == 'r2':
                     if test_score > best_test_score:
                         best_test_score = test_score
