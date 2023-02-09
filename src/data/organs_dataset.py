@@ -36,8 +36,13 @@ class OrganMeshDataset(Dataset):
         self.decimation_path = config.decimation_path
         self.registeration_path = config.registeration_path
         self.use_scaled_data = config.use_scaled_data
-  
-        split_path = os.path.join(config.split_path, f'organs_split_{mode}.txt')
+
+        # Original split contains some patients with missing data.
+        # To solve it, we take the intersection of the original split and the non nan split.
+        if self.task in ['bmi_prediction', 'weight_prediction', 'height_prediction']:
+            split_path = os.path.join(config.split_path, f'NonNa_organs_split_{mode}.txt')
+        else:
+            split_path = os.path.join(config.split_path, f'organs_split_{mode}.txt')
         with open(split_path) as f:
             self.organ_mesh_ids = f.readlines()
 
@@ -61,11 +66,15 @@ class OrganMeshDataset(Dataset):
         # Scale Age
         if config.use_scaled_data:
             # Scale the age using MinMaxScaler() from sklearn
-            scaler = MinMaxScaler()
-            self.basic_features['age'] = scaler.fit_transform(self.basic_features['age'].values.reshape(-1,1))
-            self.basic_features['bmi'] = scaler.fit_transform(self.basic_features['bmi'].values.reshape(-1,1))
-            self.basic_features['weight'] = scaler.fit_transform(self.basic_features['weight'].values.reshape(-1,1))
-            self.basic_features['standing_height'] = scaler.fit_transform(self.basic_features['standing_height'].values.reshape(-1,1))
+            scaler_age = MinMaxScaler()
+            scaler_bmi = MinMaxScaler()
+            scaler_weight = MinMaxScaler()
+            scaler_height = MinMaxScaler()
+
+            self.basic_features['age'] = scaler_age.fit_transform(self.basic_features['age'].values.reshape(-1,1))
+            self.basic_features['bmi'] = scaler_bmi.fit_transform(self.basic_features['bmi'].values.reshape(-1,1))
+            self.basic_features['weight'] = scaler_weight.fit_transform(self.basic_features['weight'].values.reshape(-1,1))
+            self.basic_features['standing_height'] = scaler_height.fit_transform(self.basic_features['standing_height'].values.reshape(-1,1))
 
         self.bridge_organ_df = pd.read_csv(config.bridge_path)
     

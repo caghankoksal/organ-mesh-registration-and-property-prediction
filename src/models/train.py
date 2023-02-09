@@ -9,7 +9,7 @@ if CUR_USER == 'koksal':
     sys.path.append('/u/home/koksal/organ-mesh-registration-and-property-prediction/')
 elif CUR_USER == 'wyo':
     sys.path.append('/u/home/wyo/final_integration/organ-mesh-registration-and-property-prediction/')
-elif CUR_USER== 'manu':
+elif CUR_USER == 'manu':
     sys.path.append('FILL THIS WITH YOUR USERDIRECTORY NAME')
 
 import torch
@@ -32,9 +32,7 @@ def train(net, train_data, optimizer, loss_fn, device):
         data = data.to(device)
         optimizer.zero_grad()
         out = net(data)
-        print('Out shape ', out.shape, 'out value : ',out, 'data y shape', data.y.shape, 'data y value : ', data.y)
         loss = loss_fn(out.squeeze(1), data.y.float())
-        print('Loss value : ', loss)
         loss.backward()
         cumulative_loss += loss.item()
         optimizer.step()
@@ -53,8 +51,6 @@ def calculate_val_loss(net, val_data, loss_fn, device):
 
         #print(f'Val loss is being calculated  val loss: {cumulative_loss}, len : {len(val_data)}')
     return cumulative_loss / len(val_data)
-
-
 
 def accuracy(predictions, gt_class_labels):
     """Compute accuracy of predicted segmentation labels.

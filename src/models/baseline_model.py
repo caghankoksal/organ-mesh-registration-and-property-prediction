@@ -34,7 +34,7 @@ class GNN(torch.nn.Module):
                  apply_dropout_every=True, task='sex_prediction', use_scaled_data=False, dropout = 0):
         super(GNN, self).__init__()
 
-        assert task in ['age_prediction', 'sex_prediction',  'weight_prediction', 'standing_height_prediction', 'bmi_prediction']
+        assert task in ['age_prediction', 'sex_prediction',  'weight_prediction', 'height_prediction', 'bmi_prediction']
         torch.manual_seed(12345)
         
         self.fc = torch.nn.ModuleList()
