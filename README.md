@@ -60,7 +60,7 @@ For regression tasks, mean average error is used as an evaluation metric.
 <p> Our results given in the following figures :
 
 ### BMI, Weight, Height Regression Results :
-![image](references/sbmi_height_weight_results.png)
+![image](references/bmi_height_weight_results.png)
 
 
 
