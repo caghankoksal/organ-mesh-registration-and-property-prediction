@@ -73,6 +73,19 @@ Set the gpu by using CUDA_VISIBLE_DEVICES and use the sweep_ID that is generated
 CUDA_VISIBLE_DEVICES=0 wandb agent sweep_ID
 ```
 
+# Model Training
+```
+cd src/models
+python train.py --model <MODEL> --task <TASK>  --batch_size <Batch Size> --device <GPU_NUMBER> --enc_feats <Enc Feat Dim> --  ...
+
+```
+Example:
+To train Feastnet on age prediction with default parameters you can apply following command.
+```
+python train.py --model fsgnet --task age_prediction
+```
+
+
 # Results
 For sex prediction we have used accuracy as an evaluation metric.
 For regression tasks, mean average error is used as an evaluation metric.
