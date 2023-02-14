@@ -8,6 +8,25 @@ Explore performance of Graph Neural Networks on the organ mesh dataset on the do
 - Height Regression
 - BMI Regression
 
+# Dataset
+- A dataset of ~150K organ meshes extracted from MRI scans from the UKBioBank dataset.
+Meshes 
+- Liver
+- Pancreas, 
+- Kidneys
+- Spleen.
+- 30382 Patients.
+- Features
+-  Sex
+-  Age
+- BMI, 
+- Height
+- Weight.
+Females: ~51%.
+Males: ~49%.
+
+Data statistics can be seen in the following figure
+![image](references/data_dist.png)
 
 # Setup
 
@@ -61,6 +80,11 @@ For regression tasks, mean average error is used as an evaluation metric.
 
 ### BMI, Weight, Height Regression Results :
 ![image](references/bmi_height_weight_results.png)
+
+### Age Regression Results :
+Liver Age regression result comparison between registered and unregistered data. 
+Baseline is the mean prediction.
+![image](references/liver_age_prediction.png.png)
 
 
 
