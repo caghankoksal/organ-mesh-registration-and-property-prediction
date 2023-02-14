@@ -44,12 +44,8 @@ def calculate_val_loss(net, val_data, loss_fn, device):
     for data in val_data:
         data = data.to(device)
         out = net(data)
-        #print('Out shape ', out.shape)
-        #print('data y shape', data.y.shape)
         loss = loss_fn(out.squeeze(1), data.y.float())
         cumulative_loss += loss.item()
-
-        #print(f'Val loss is being calculated  val loss: {cumulative_loss}, len : {len(val_data)}')
     return cumulative_loss / len(val_data)
 
 def accuracy(predictions, gt_class_labels):
@@ -110,7 +106,6 @@ def evaluate_performance(dataset, net, configs, task='classification'):
             elif configs.eval_method == 'mae':
                 measure_score = torch.nn.L1Loss().to(device)
             prediction_accuracies.append(measure_score(predictions.squeeze(1), data.y))
-            #prediction_accuracies.append(r2_score(predictions.cpu().detach().numpy(), data.y.cpu()))
         
     return sum(prediction_accuracies) / len(prediction_accuracies)
 
@@ -140,9 +135,18 @@ def build_optimizer(network, optimizer, learning_rate, weight_decay):
 
 
 def build_network(configs):
-    activation = getattr(nn, configs.activation)
-    if configs.model=='fsgnet':
+    """Builds network that is specified in the configs file.
 
+    Args:
+        configs (ArgParse Config file): Config file
+
+    Returns:
+        net: Pytorch Module
+    """
+    activation = getattr(nn, configs.activation)
+
+    # FeastNet Model
+    if configs.model=='fsgnet':
         model_params = dict(
         use_input_encoder = configs.use_input_encoder,
         num_classes=configs.num_classes,
@@ -161,6 +165,7 @@ def build_network(configs):
 
         net = MeshSeg(**model_params)
 
+    # Baseline models that use GCN, GraphSAGE, GAT layers
     elif configs.model=='baseline':
         
         print('Baseline Model is initialized')
@@ -197,7 +202,6 @@ def build_dataset(config, return_dataset=False):
     return train_loader, test_loader
 
 def training_function(config=None):
-    print('Input cfg to training function ',config)
     
     # note that we define values from `wandb.config` instead of 
     # defining hard values
@@ -259,6 +263,7 @@ def training_function(config=None):
             
             wandb.watch(net)
 
+            # Logs the best evaluation scores and save the models
             if config.task == 'sex_prediction':
                 if test_acc > best_test_acc:
                     best_test_acc = test_acc
@@ -272,6 +277,7 @@ def training_function(config=None):
                                 'config': {k:v
                                 for k,v in config.items()} }, f"{savedir}/classification_organ_{config.organ}_enc_channels_{config.hidden_channels}_best_testacc_{test_acc:.2f}.pth")
 
+            # Regression tasks
             else:
                 if config.eval_method == 'r2':
                     if test_score > best_test_score:
