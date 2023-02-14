@@ -95,10 +95,15 @@ For regression tasks, mean average error is used as an evaluation metric.
 ![image](references/bmi_height_weight_results.png)
 
 ### Age Regression Results :
-Liver Age regression result comparison between registered and unregistered data. 
+Liver Age regression results
+ Comparison between registered and unregistered data. 
 Baseline is the mean prediction.
 ![image](references/liver_age_prediction.png.png)
+### Sex Classification Results :
+Sex classification results.
+Comparison between all organs. 
 
+![image](references/sex_classification_all_organs.png)
 
 
 - [ ] Check the playground notebooks for usage examples
