@@ -1,5 +1,6 @@
 Graph Neural Networks on Abdominal Organs
 ==============================
+TUM Advanced Deep Learning in Medicine Practical Course Project Repo Group members: Caghan Koksal, Manu Puthiyadath, and Youssef Wally
 
 Explore performance of Graph Neural Networks on the organ mesh dataset on the downstream tasks
 - Sex Classification
